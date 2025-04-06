@@ -1,0 +1,127 @@
+<?php
+session_start();
+
+// Enable error reporting
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Debug log
+$debugLogFile = __DIR__ . '/debug.log';
+function debugLog($message) {
+    global $debugLogFile;
+    file_put_contents($debugLogFile, "[" . date('Y-m-d H:i:s') . "] $message\n", FILE_APPEND);
+}
+debugLog("Script started");
+
+// Database connection
+include 'connection.php'; // Ensure this exists
+
+// Check PHP version
+if (version_compare(PHP_VERSION, '7.2.0', '<')) {
+    debugLog("PHP version too low: " . PHP_VERSION);
+    die(json_encode(['status' => 'error', 'message' => 'Requires PHP 7.2.0+']));
+}
+debugLog("PHP version: " . PHP_VERSION);
+
+// Load PHPMailer
+require 'vendor/autoload.php';
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+debugLog("PHPMailer loaded");
+
+// Send OTP email function
+function sendOtpEmail($email, $otp) {
+    debugLog("Sending OTP to $email");
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'selabnadirydxb@gmail.com'; // Your Gmail
+        $mail->Password = 'mijrkrkhednlrjji'; // App Password
+        $mail->SMTPSecure = 'tls';
+        $mail->Port = 587;
+
+        $mail->setFrom('selabnadirydxb@gmail.com', 'Selab Nadiry');
+        $mail->addAddress($email);
+        $mail->isHTML(true);
+        $mail->Subject = 'Your OTP';
+        $mail->Body = "Your OTP is: <strong>$otp</strong><br>Valid for 5 minutes.";
+        $mail->AltBody = "Your OTP is: $otp\nValid for 5 minutes.";
+
+        $mail->SMTPDebug = 2;
+        $mail->Debugoutput = function($str, $level) { debugLog("PHPMailer[$level]: $str"); };
+
+        $mail->send();
+        debugLog("Email sent to $email");
+        return true;
+    } catch (Exception $e) {
+        debugLog("Email failed: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
+header('Content-Type: application/json');
+debugLog("POST data: " . json_encode($_POST));
+
+// Send OTP
+if (isset($_POST['SendOTP']) && $_POST['SendOTP'] === 'send_otp') {
+    $email = filter_var($_POST['Email'] ?? '', FILTER_SANITIZE_EMAIL);
+    debugLog("SendOTP request for $email");
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid email']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT staff_id, staff_name, role_id, staff_email FROM staff WHERE staff_email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    debugLog("User found: " . ($user ? 'Yes' : 'No'));
+
+    if ($user) {
+        $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $_SESSION['otp'] = $otp;
+        $_SESSION['otp_email'] = $email;
+        $_SESSION['otp_expiry'] = time() + 300;
+        $_SESSION['user_id'] = $user['staff_id'];
+        $_SESSION['role_id'] = $user['role_id'];
+        debugLog("OTP generated: $otp");
+
+        if (sendOtpEmail($email, $otp)) {
+            echo json_encode(['status' => 'success', 'message' => 'EmailFound']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'EmailError']);
+        }
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'EmailNotFound']);
+    }
+    exit;
+}
+
+// Verify OTP
+if (isset($_POST['VerifyOTP']) && $_POST['VerifyOTP'] === 'verify_otp') {
+    $otp = filter_var($_POST['OTP'] ?? '', FILTER_SANITIZE_STRING);
+    $email = filter_var($_POST['Email'] ?? '', FILTER_SANITIZE_EMAIL);
+    debugLog("VerifyOTP request: OTP=$otp, Email=$email");
+
+    if (!$_SESSION['otp'] || $_SESSION['otp_email'] !== $email || $_SESSION['otp'] !== $otp || time() > $_SESSION['otp_expiry']) {
+        debugLog("OTP verification failed");
+        echo json_encode(['status' => 'error', 'message' => 'InvalidOTP']);
+        exit;
+    }
+
+    $_SESSION['user_id'] = $_SESSION['user_id'];
+    $_SESSION['role_id'] = $_SESSION['role_id'];
+    $_SESSION['email'] = $email;
+    unset($_SESSION['otp'], $_SESSION['otp_email'], $_SESSION['otp_expiry']);
+    debugLog("OTP verified");
+    echo json_encode(['status' => 'success', 'message' => 'Success']);
+    exit;
+}
+
+debugLog("No valid request");
+http_response_code(400);
+echo json_encode(['status' => 'error', 'message' => 'No valid request']);
+exit;

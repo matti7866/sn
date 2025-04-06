@@ -1,0 +1,97 @@
+<!-- BEGIN breadcrumb -->
+<ol class="breadcrumb float-xl-end">
+	<li class="breadcrumb-item"><a href="javascript:;">Home</a></li>
+	<li class="breadcrumb-item"><a href="javascript:;">UI Elements</a></li>
+	<li class="breadcrumb-item active">Modal & Notification</li>
+</ol>
+<!-- END breadcrumb -->
+<!-- BEGIN page-header -->
+<h1 class="page-header">Modal & Notification <small>header small text goes here...</small></h1>
+<!-- END page-header -->
+
+<!-- BEGIN row -->
+<div class="row">
+	<!-- BEGIN col-6 -->
+	<div class="col-xl-6">
+		<!-- BEGIN panel -->
+		<panel title="NgbModal">
+      <p class="lead">
+        A service to open modal windows. Creating a modal is straightforward: create a template and pass it as an argument to the "open" method!
+      </p>
+      <!-- #modal-dialog -->
+      <ng-template #modalDialog let-c="close" let-d="dismiss">
+        <div class="modal-header">
+          <h4 class="modal-title">Modal Dialog</h4>
+          <button type="button" class="btn-close" (click)="d('Cross click')"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            Modal body content here...
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-white" (click)="c('Close click')">Close</button>
+          <a href="javascript:;" class="btn btn-success">Action</a>
+        </div>
+      </ng-template>
+
+      <ng-container outsideBody>
+        <table class="table table-panel mb-0">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Demo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Default NgBootstrap Modal Dialog Box.</td>
+              <td><button class="btn btn-sm btn-success" (click)="open(modalDialog)">Demo</button></td>
+            </tr>
+          </tbody>
+        </table>
+				<!-- BEGIN hljs-wrapper -->
+				<div class="hljs-wrapper">
+					<pre><code class="xml" [highlight]="code1"></code></pre>
+				</div>
+				<!-- END hljs-wrapper -->
+      </ng-container>
+		</panel>
+		<!-- END panel -->
+	</div>
+	<!-- END col-6 -->
+
+	<!-- BEGIN col-6 -->
+	<div class="col-xl-6">
+		<!-- BEGIN panel -->
+		<panel>
+			<ng-container header>
+				<h4 class="panel-title">Bootstrap SweetAlert <span class="badge bg-success">NEW</span></h4>
+			</ng-container>
+
+      <p class="lead mb-10px text-inverse">
+        SweetAlert for Bootstrap. A beautiful replacement for JavaScript's "alert"
+      </p>
+      <hr />
+      <p class="">
+        Try any of those!
+      </p>
+      <a href="javascript:;" [swal]="['Question Type', 'description here', 'question']" class="btn btn-primary me-1">Primary</a>
+      <a href="javascript:;" [swal]="['Info Type', 'description here', 'info']" class="btn btn-info me-1">Info</a>
+      <a href="javascript:;" [swal]="['Success Type', 'description here', 'success']" class="btn btn-success me-1">Success</a>
+      <a href="javascript:;" [swal]="['Warning Type', 'description here', 'warning']" class="btn btn-warning me-1">Warning</a>
+      <a href="javascript:;" [swal]="['Error Type', 'description here', 'error']" class="btn btn-danger me-1">Danger</a>
+			
+			<ng-container outsideBody>
+				<!-- BEGIN hljs-wrapper -->
+				<div class="hljs-wrapper">
+					<pre><code class="xml" [highlight]="code2"></code></pre>
+				</div>
+				<!-- END hljs-wrapper -->
+			</ng-container>
+		</panel>
+		<!-- END panel -->
+	</div>
+	<!-- END col-6 -->
+</div>
+<!-- END row -->

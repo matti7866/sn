@@ -1,0 +1,8 @@
+.comment-banner-msg {
+	border: 2px solid $gray-300;
+	padding: rem(15px) rem(20px);
+	text-align: center;
+	margin-bottom: rem(20px);
+	
+	@include border-radius($border-radius);
+}

@@ -1,0 +1,80 @@
+@media print {
+  @page{
+    size: A4 portrait;
+  }
+  .table th {
+      background-color: #ff423e !important;
+      color: white;
+  }
+  .table-striped tbody tr:nth-of-type(odd) td {
+      background-color: rgba(140, 130, 130, 0.05)!important;
+  }
+  .table tbody tr td.payment {
+      background-color: #32a932 !important;
+      color: white !important;
+      font-weight: bold !important;
+  }
+  .table tbody tr td.fine {
+    background-color: #ff5b57 !important;
+    color: white !important;
+    font-weight: bold !important;
+  }
+  .table tbody tr td.fine_payment {
+    background-color: #49b6d6 !important;
+    color: white !important;
+    font-weight: bold !important;
+  }
+  
+  #SnSection{
+      color:white;
+      
+  }
+}
+
+.col-md-12 {
+  width: 100%;
+}
+
+.col-md-11 {
+  width: 91.66666666666666%;
+}
+
+.col-md-10 {
+  width: 83.33333333333334%;
+}
+
+.col-md-9 {
+  width: 75%;
+}
+
+.col-md-8 {
+  width: 66.66666666666666%;
+}
+
+.col-md-7 {
+  width: 58.333333333333336%;
+}
+
+.col-md-6 {
+  width: 50%;
+}
+
+.col-md-5 {
+  width: 41.66666666666667%;
+}
+
+.col-md-4 {
+  width: 33.33333333333333%;
+}
+
+.col-md-3 {
+  width: 25%;
+}
+
+.col-md-2 {
+  width: 16.666666666666664%;
+}
+
+.col-md-1 {
+  width: 8.333333333333332%;
+}

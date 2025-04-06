@@ -1,0 +1,42 @@
+{
+  "name": "color-admin-frontend-one-page-parallax",
+  "version": "5.0.0",
+  "description": "Frontend - One Page Parallax Template",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "SeanTheme",
+  "license": "ISC",
+  "devDependencies": {
+    "gulp": "^4.0.2",
+    "gulp-clean-css": "^4.3.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-connect": "^5.7.0",
+    "gulp-csso": "^4.0.1",
+    "gulp-download2": "^1.1.0",
+    "gulp-file-include": "^2.3.0",
+    "gulp-header": "^2.0.9",
+    "gulp-less": "^5.0.0",
+    "gulp-livereload": "^4.0.2",
+    "gulp-sass": "^4.1.1",
+    "gulp-sass-variables": "^1.2.0",
+    "gulp-sourcemaps": "^3.0.0",
+    "gulp-uglify": "^3.0.2"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.15.3",
+    "animate.css": "^4.1.1",
+    "bootstrap": "^5.0.2",
+    "bootstrap-icons": "^1.5.0",
+    "jquery": "^3.6.0",
+    "jquery-ui-dist": "^1.12.1",
+    "js-cookie": "^2.2.1",
+    "merge-stream": "^2.0.0",
+    "pace-js": "^1.2.4",
+    "paroller.js": "^1.4.7",
+    "popper.js": "^1.16.1",
+    "scrollmonitor": "^1.2.4"
+  }
+}

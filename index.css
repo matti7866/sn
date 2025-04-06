@@ -1,0 +1,20 @@
+:root {
+    --fc-border-color: rgba(128, 128, 128, 0.367);
+    --fc-daygrid-event-dot-width: 5px;
+  }
+  .fc .fc-daygrid-day-number {
+    padding: 4px;
+    position: relative;
+    z-index: 4;
+    color:black;
+    font-weight: bolder;
+ }
+ .fc-daygrid-day-number{
+    font-weight: bold;
+ }
+ .fc-event-title fc-sticky{
+    font-weight: bolder;
+ }
+ .fc .fc-daygrid-day.fc-day-today {
+    background-color: #ada996;
+}

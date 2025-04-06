@@ -1,0 +1,4 @@
+git rm -r --cached email_debug.log
+git rm -r --cached email_fetch.log
+git rm -r --cached WB0N89JMK.zip.494007168.upload.tmp
+

@@ -1,0 +1,21 @@
+[0;1;32m●[0m cron.service - Regular background program processing daemon
+     Loaded: loaded (]8;;file://www.sntrips.com/usr/lib/systemd/system/cron.service/usr/lib/systemd/system/cron.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Wed 2025-03-12 04:53:00 +04; 18h ago
+       Docs: ]8;;man:cron(8)man:cron(8)]8;;
+   Main PID: 878910 (cron)
+      Tasks: 1 (limit: 9256)
+     Memory: 1.8M (peak: 74.0M)
+        CPU: 6min 27.924s
+     CGroup: /system.slice/cron.service
+             └─[0;38;5;245m878910 /usr/sbin/cron -f -P[0m
+
+Mar 12 23:45:01 www.sntrips.com sudo[940215]: [0;1;39m[0;1;31m[0;1;39m    root : PWD=/root ; USER=root ; COMMAND=/usr/bin/bash -c '* * * * * php /var/wwwroot/sntravels/fetch_emails.php >> /var/wwwroot/sntravels/email_fetch.log 2>&1'[0m
+Mar 12 23:45:01 www.sntrips.com sudo[940215]: pam_unix(sudo:session): session opened for user root(uid=0) by root(uid=0)
+Mar 12 23:45:01 www.sntrips.com sudo[940215]: pam_unix(sudo:session): session closed for user root
+Mar 12 23:45:01 www.sntrips.com CRON[940196]: pam_unix(cron:session): session closed for user root
+Mar 12 23:45:01 www.sntrips.com CRON[940198]: pam_unix(cron:session): session closed for user root
+Mar 12 23:45:02 www.sntrips.com CRON[940197]: pam_unix(cron:session): session closed for user root
+Mar 12 23:45:06 www.sntrips.com CRON[940195]: pam_unix(cron:session): session closed for user root
+Mar 12 23:45:11 www.sntrips.com CRON[940194]: pam_unix(cron:session): session closed for user root
+Mar 12 23:45:16 www.sntrips.com CRON[940193]: pam_unix(cron:session): session closed for user root
+Mar 12 23:45:21 www.sntrips.com CRON[940192]: pam_unix(cron:session): session closed for user root

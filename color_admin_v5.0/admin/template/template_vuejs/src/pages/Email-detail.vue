@@ -1,0 +1,154 @@
+<template>
+	<!-- BEGIN mailbox -->
+	<div class="mailbox">
+		<!-- BEGIN mailbox-sidebar -->
+		<div class="mailbox-sidebar">
+			<div class="mailbox-sidebar-header d-flex justify-content-center">
+				<b-button v-b-toggle.emailNav data-bs-toggle="collapse" class="btn btn-inverse btn-sm me-auto d-block d-lg-none">
+					<i class="fa fa-cog"></i>
+				</b-button>
+				<router-link to="/email/compose" class="btn btn-inverse ps-40px pe-40px btn-sm">
+					Compose
+				</router-link>
+			</div>
+			<b-collapse class="mailbox-sidebar-content collapse d-lg-block" id="emailNav">
+				<!-- BEGIN scrollbar -->
+				<vue-custom-scrollbar class="h-100">
+					<div class="nav-title"><b>FOLDERS</b></div>
+					<ul class="nav nav-inbox">
+						<li class="active"><router-link to="/email/inbox"><i class="fa fa-hdd fa-lg fa-fw me-2"></i> Inbox <span class="badge bg-gray-600 fs-10px rounded-pill ms-auto fw-bolder pt-4px pb-5px px-8px">52</span></router-link></li>
+						<li><router-link to="/email/inbox"><i class="fa fa-flag fa-lg fa-fw me-2"></i> Important</router-link></li>
+						<li><router-link to="/email/inbox"><i class="fa fa-envelope fa-lg fa-fw me-2"></i> Sent</router-link></li>
+						<li><router-link to="/email/inbox"><i class="fa fa-save fa-lg fa-fw me-2"></i> Drafts</router-link></li>
+						<li><router-link to="/email/inbox"><i class="fa fa-trash-alt fa-lg fa-fw me-2"></i> Trash</router-link></li>
+					</ul>
+					<div class="nav-title"><b>LABEL</b></div>
+					<ul class="nav nav-inbox">
+						<li><a href="javascript:;"><i class="fa fa-fw fa-lg fs-12px me-2 fa-circle text-inverse"></i> Admin</a></li>
+						<li><a href="javascript:;"><i class="fa fa-fw fa-lg fs-12px me-2 fa-circle text-blue"></i> Designer & Employer</a></li>
+						<li><a href="javascript:;"><i class="fa fa-fw fa-lg fs-12px me-2 fa-circle text-success"></i> Staff</a></li>
+						<li><a href="javascript:;"><i class="fa fa-fw fa-lg fs-12px me-2 fa-circle text-warning"></i> Sponsorer</a></li>
+						<li><a href="javascript:;"><i class="fa fa-fw fa-lg fs-12px me-2 fa-circle text-danger"></i> Client</a></li>
+					</ul>
+				</vue-custom-scrollbar>
+				<!-- END scrollbar -->
+			</b-collapse>
+		</div>
+		<!-- END mailbox-sidebar -->
+		<!-- BEGIN mailbox-content -->
+		<div class="mailbox-content">
+			<div class="mailbox-content-header">
+				<div class="btn-toolbar">
+					<div class="btn-group me-2">
+						<a href="javascript:;" class="btn btn-white btn-sm"><i class="fa fa-fw fa-reply"></i> <span class="d-none d-lg-inline">Reply</span></a>
+					</div>
+					<div class="btn-group me-2">
+						<a href="javascript:;" class="btn btn-white btn-sm"><i class="fa fa-fw fa-trash"></i> <span class="d-none d-lg-inline">Delete</span></a>
+						<a href="javascript:;" class="btn btn-white btn-sm"><i class="fa fa-fw fa-archive"></i> <span class="d-none d-lg-inline">Archive</span></a>
+					</div>
+					<div class="btn-group ms-auto me-2">
+						<router-link to="/email/inbox" class="btn btn-white btn-sm disabled"><i class="fa fa-fw fa-arrow-up"></i></router-link>
+						<router-link to="/email/inbox" class="btn btn-white btn-sm"><i class="fa fa-fw fa-arrow-down"></i></router-link>
+					</div>
+					<div class="btn-group">
+						<router-link to="/email/inbox" class="btn btn-white btn-sm"><i class="fa fa-fw fa-times"></i></router-link>
+					</div>
+				</div>
+			</div>
+			<div class="mailbox-content-body">
+				<!-- BEGIN scrollbar -->
+				<vue-custom-scrollbar class="h-100">
+					<div class="p-3">
+						<h3 class="mb-3">Bootstrap v5.0 is coming soon</h3>
+						<div class="d-flex mb-3">
+							<a href="javascript:;">
+								<img class="rounded-pill" width="48" alt="" src="/assets/img/user/user-12.jpg" />
+							</a>
+							<div class="ps-3">
+								<div class="email-from text-inverse fs-14px mb-3px fw-bold">
+									from support@wrapbootstrap.com
+								</div>
+								<div class="mb-3px"><i class="fa fa-clock fa-fw"></i> Today, 8:30 AM</div>
+								<div class="email-to">
+									To: nguoksiong@live.co.uk
+								</div>
+							</div>
+						</div>
+						<hr class="bg-gray-500" />
+						<ul class="attached-document clearfix">
+							<li class="fa-file">
+								<div class="document-file">
+									<a href="javascript:;">
+										<i class="fa fa-file-pdf"></i>
+									</a>
+								</div>
+								<div class="document-name"><a href="javascript:;" class="text-decoration-none">flight_ticket.pdf</a></div>
+							</li>
+							<li class="fa-camera">
+								<div class="document-file">
+									<a href="javascript:;">
+										<img src="/assets/img/gallery/gallery-11.jpg" alt="" />
+									</a>
+								</div>
+								<div class="document-name"><a href="javascript:;" class="text-decoration-none">front_end_mockup.jpg</a></div>
+							</li>
+						</ul>
+
+						<p class="text-inverse"> 
+							Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras vel auctor nisi, vel auctor orci. <br />
+							Aenean in pretium odio, ut lacinia tellus. Nam sed sem ac enim porttitor vestibulum vitae at erat.
+						</p>
+						<p class="text-inverse">
+							Curabitur auctor non orci a molestie. Nunc non justo quis orci viverra pretium id ut est. <br />
+							Nullam vitae dolor id enim consequat fermentum. Ut vel nibh tellus. <br />
+							Duis finibus ante et augue fringilla, vitae scelerisque tortor pretium. <br />
+							Phasellus quis eros erat. Nam sed justo libero.
+						</p>
+						<p class="text-inverse">
+							Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos.<br /> 
+							Sed tempus dapibus libero ac commodo.
+						</p>
+						<br />
+						<br />
+						<p class="text-inverse">
+							Best Regards,<br />
+							Sean.<br /><br />
+							Information Technology Department,<br />
+							Senior Front End Designer<br />
+						</p>
+					</div>
+				</vue-custom-scrollbar>
+				<!-- END scrollbar -->
+			</div>
+			<div class="mailbox-content-footer d-flex align-items-center justify-content-end">
+				<div class="btn-group me-2">
+					<router-link to="/email/inbox" class="btn btn-white btn-sm disabled"><i class="fa fa-fw fa-arrow-up"></i></router-link>
+					<router-link to="/email/inbox" class="btn btn-white btn-sm"><i class="fa fa-fw fa-arrow-down"></i></router-link>
+				</div>
+				<div class="btn-group">
+					<router-link to="/email/inbox" class="btn btn-white btn-sm"><i class="fa fa-fw fa-times"></i></router-link>
+				</div>
+			</div>
+		</div>
+		<!-- END mailbox-content -->
+	</div>
+	<!-- END mailbox -->
+</template>
+
+<script>
+import AppOptions from '../config/AppOptions.vue'
+
+export default {
+	data() {
+		AppOptions.appContentFullHeight = true;
+		AppOptions.appContentClass = 'p-0';
+
+		return { }
+	},
+	beforeRouteLeave (to, from, next) {
+		AppOptions.appContentFullHeight = false;
+		AppOptions.appContentClass = '';
+		next();
+	}
+}
+</script>

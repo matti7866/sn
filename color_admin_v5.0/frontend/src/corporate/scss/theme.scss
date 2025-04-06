@@ -1,0 +1,56 @@
+@import 'functions';
+@import 'variables';
+@import 'node_modules/bootstrap/scss/functions';
+@import 'node_modules/bootstrap/scss/variables';
+@import 'node_modules/bootstrap/scss/mixins';
+@import 'mixins';
+
+a {
+	color: $primary;
+
+	&:hover,
+	&:focus {
+		color: darken($primary, 15%);
+	}
+}
+.pace {
+	& .pace-progress {
+		background: $primary !important;
+	}
+	& .pace-activity {
+		border-top-color: $primary !important;
+		border-left-color: $primary !important;
+	}
+}
+.text-primary {
+	@if $primary-color == 'black' {
+		color: lighten($primary, 45%) !important;
+	} @else {
+		color: $primary !important;
+	}
+}
+.bg-theme {
+	background-color: $primary !important;
+}
+.btn.btn-primary {
+	@include button-variant($primary, $primary);
+	
+	@if $primary-color != 'yellow' {
+		color: $white;
+	}
+}
+.header {
+	&.header-default {
+		& .header-logo {
+			& .logo-link {
+				& .logo {
+					border-color: rgba($primary, 1);
+				
+					&:before {
+						background: rgba($primary, .75);
+					}
+				}
+			}
+		}
+	}
+}

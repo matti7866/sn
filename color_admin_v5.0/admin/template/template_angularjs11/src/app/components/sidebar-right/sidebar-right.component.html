@@ -1,0 +1,116 @@
+<!-- BEGIN #sidebar-right -->
+<div id="sidebar-right" class="app-sidebar app-sidebar-end">
+  <!-- BEGIN sidebar scrollbar -->
+  <perfect-scrollbar class="h-100">
+    <div class="p-20px text-white">
+			<p class="mb-0 fw-bold fs-10px">TOTAL VISITORS</p>
+			<div>
+				<ngx-trend
+					height="60"
+					autoDraw="true"
+					autoDrawDuration="0"
+					autoDrawEasing="ease-out"
+					smooth="true"
+					[data]="[0,2,5,9,5,10,3,5,0,0,1,8,2,9,0]"
+					[gradient]="[global.COLOR_BLUE]"
+					radius="0.1"
+					strokeWidth="5"
+					strokeLinecap="butt"
+				>
+				</ngx-trend>
+			</div>
+			<p class="mb-0 fw-bold fs-10px">TOTAL PAGE VIEWS</p>
+			<div>
+				<ngx-trend
+					height="60"
+					autoDraw="true"
+					autoDrawDuration="0"
+					autoDrawEasing="ease-out"
+					smooth="true"
+					[data]="[0,10,3,5,0,0,1,8,2,2,5,9,5,9,0]"
+					[gradient]="[global.COLOR_GREEN]"
+					radius="0.1"
+					strokeWidth="5"
+					strokeLinecap="butt"
+				>
+				</ngx-trend>
+			</div>
+			<p class="mb-0 fw-bold fs-10px">TOTAL UNIQUE VISITORS</p>
+			<div>
+				<ngx-trend
+					height="60"
+					autoDraw="true"
+					autoDrawDuration="0"
+					autoDrawEasing="ease-out"
+					smooth="true"
+					[data]="[3,5,0,0,1,8,2,9,0,0,2,5,9,5,10]"
+					[gradient]="[global.COLOR_ORANGE]"
+					radius="0.1"
+					strokeWidth="5"
+					strokeLinecap="butt"
+				>
+				</ngx-trend>
+			</div>
+			<p class="mb-0 fw-bold fs-10px">BOUNCE RATE</p>
+			<div class="mb-4">
+				<ngx-trend
+					height="60"
+					autoDraw="true"
+					autoDrawDuration="0"
+					autoDrawEasing="ease-out"
+					smooth="true"
+					[data]="[0,2,3,5,0,0,1,8,2,9,0,5,9,5,10]"
+					[gradient]="[global.COLOR_RED]"
+					radius="0.1"
+					strokeWidth="5"
+					strokeLinecap="butt"
+				>
+				</ngx-trend>
+			</div>
+			
+      <div>
+        <ngb-accordion #acc="ngbAccordion" [closeOthers]="true" activeIds="ngb-panel-0">
+					<ngb-panel cardClass="bg-gray-700 border-0 rounded-0 rounded-top overflow-hidden pb-1">
+						<ng-template ngbPanelHeader>
+							<div class="mx-n3 mt-n2 mb-n3">
+								<button ngbPanelToggle class="btn btn-inverse bg-gray-900 d-block w-100 rounded-0 text-start border-0 py-10px px-3">Accordion #1</button>
+							</div>
+						</ng-template>
+						<ng-template ngbPanelContent>
+							Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia
+							aute, non cupidatat skateboard dolor brunch.
+						</ng-template>
+					</ngb-panel>
+					<ngb-panel cardClass="bg-gray-700 border-0 rounded-0 overflow-hidden pb-1">
+						<ng-template ngbPanelHeader>
+							<div class="mx-n3 mt-n2 mb-n3">
+								<button ngbPanelToggle class="btn btn-inverse bg-gray-900 d-block w-100 rounded-0 text-start border-0 py-10px px-3">Accordion #2</button>
+							</div>
+						</ng-template>
+						<ng-template ngbPanelContent>
+							Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia
+							aute, non cupidatat skateboard dolor brunch.
+						</ng-template>
+					</ngb-panel>
+					<ngb-panel cardClass="bg-gray-700 border-0 rounded-0 rounded-bottom overflow-hidden pb-1">
+						<ng-template ngbPanelHeader>
+							<div class="mx-n3 mt-n2 mb-n3">
+								<button ngbPanelToggle class="btn btn-inverse bg-gray-900 d-block w-100 rounded-0 text-start border-0 py-10px px-3">Accordion #3</button>
+							</div>
+						</ng-template>
+						<ng-template ngbPanelContent>
+							Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia
+							aute, non cupidatat skateboard dolor brunch.
+						</ng-template>
+					</ngb-panel>
+				</ngb-accordion>
+      </div>
+    </div>
+  </perfect-scrollbar>
+  <!-- END sidebar scrollbar -->
+</div>
+<div class="app-sidebar-bg app-sidebar-end"></div>
+<div class="app-sidebar-mobile-backdrop app-sidebar-end">
+	<a href="javascript:;" (click)="toggleAppSidebarEndMobile()" class="stretched-link"></a>
+</div>
+<!-- END #sidebar-right -->

@@ -1,0 +1,208 @@
+.col-fixed-1 {
+    width: 9%;
+}
+.col-fixed-4 {
+    width: 33%;
+}
+.col-fixed-7 {
+    width: 50%;
+}
+.margin-left-40{
+    margin-left: 60px;
+}
+.companyName{
+    font-family: 'Montserrat', sans-serif;
+    font-size:20px;
+    margin-top:3px;
+    margin-bottom:8px;
+}
+#ReceiptInformation{
+  width:95%;
+  float:right;
+}
+
+
+.companyInfo{
+    font-family: 'Montserrat', sans-serif; 
+    font-size:15px;
+    margin-bottom:0px;
+}
+.ReceiptInfoColumn{
+    width: 150px;
+}
+#company-signature{
+  border: 3px solid black;
+  display: block;
+  margin: 0 auto;
+}
+#customer-signature{
+  border: 3px solid black;
+  display: block;
+  margin: 0 auto;
+}
+
+@media print {
+    @page{
+        size: A5 landscape;
+        margin:0;
+    }
+   
+    #paymentAndSign{
+      position: fixed; 
+      bottom:10px;
+      right:30px;
+      width: 93%;
+    }
+    .easerButton{
+      display: none;
+    }
+    #printThisArea{
+      position: fixed;
+      page-break-inside: avoid;
+      box-sizing: border-box;
+      width: calc(100% - 20px); /* subtract 10px margin on each side */
+      height: calc(100% - 20px); /* subtract 10px margin on each side */
+      margin: 10px; /* set margin to 10px */
+      border:2px solid;
+      padding:0;
+        border-image: -webkit-linear-gradient(to right, #8e0e00, #1f1c18) 3;
+        border-image: -moz-linear-gradient(to right, #8e0e00, #1f1c18) 3;
+        border-image: -o-linear-gradient(to right, #8e0e00, #1f1c18) 3;
+        border-image: linear-gradient(to right, #8e0e00, #1f1c18) 3;
+    }
+    #headerLineBreak{
+      height: 1px;
+      margin-left: -20px;
+      margin-right: -20px;
+      background: #8E0E00;  /* fallback for old browsers */
+      background: -webkit-linear-gradient(to right, #1F1C18, #8E0E00);  /* Chrome 10-25, Safari 5.1-6 */
+      background: linear-gradient(to right, #1F1C18, #8E0E00); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+      margin-top: -7px;
+    }
+    #InfoTable th {
+      background-color: #ff423e !important;
+      color: white;
+    }
+    .margin-left-40{
+        margin-left: 30px;
+    }
+    .margin-top-20{
+        margin-top: 4px;
+    }
+    .companyName{
+        font-family: 'Montserrat', sans-serif;
+        font-size:14px;
+        margin-bottom:8px;
+    }
+    .companyInfo{
+        font-family: 'Montserrat', sans-serif; 
+        font-size:11px;
+        margin-bottom:0px;
+    }
+    .ReceiptInfoColumn{
+        width: 150px;
+    }
+    #ReceiptInformation{
+      width:95%;
+      font-size: 8px;
+      float:right;
+    }
+    .table-striped tbody tr:nth-of-type(odd) td  {
+        background-color: #e9ecef !important;
+        color: #2d353c !important;
+    }
+    .d{
+      margin-top: -10px;
+    }
+    #InfoTable thead tr th{
+      margin:0;
+      padding: 0px;
+      text-align: center;
+      font-size: 12px;
+    }
+    #InfoTable tbody tr td{
+      font-size: 10px;
+      max-width: 200px; /* set the maximum width of the cell */
+      overflow: hidden; /* hide any overflowing text */
+      white-space: nowrap; /* prevent the text from wrapping onto a new line */
+      text-overflow: ellipsis; /* show an ellipsis when the text overflows */
+    }
+    #company-signature{
+      border:none;
+      display: block;
+      margin: 0 auto;
+    }
+    .company-signatureText{
+      font-size: 10px;
+      margin-top: -10px;
+    }
+    .signatureLine{
+      margin-top: 0px;
+    }
+    #customer-signature{
+      border:none;
+      display: block;
+      margin: 0 auto;
+    }
+    
+    .col-fixed-1 {
+        width: 9%;
+    }
+    .col-fixed-4 {
+        width: 33%;
+    }
+    .col-fixed-7 {
+        width: 50%;
+    }
+    .col-md-12 {
+        width: 100%;
+      }
+      
+      .col-md-11 {
+        width: 91.66666666666666%;
+      }
+      
+      .col-md-10 {
+        width: 83.33333333333334%;
+      }
+      
+      .col-md-9 {
+        width: 75%;
+      }
+      
+      .col-md-8 {
+        width: 66.66666666666666%;
+      }
+      
+      .col-md-7 {
+        width: 58.333333333333336%;
+      }
+      
+      .col-md-6 {
+        width: 50%;
+      }
+      
+      .col-md-5 {
+        width: 41.66666666666667%;
+      }
+      
+      .col-md-4 {
+        width: 33.33333333333333%;
+      }
+      
+      .col-md-3 {
+        width: 25%;
+      }
+      
+      .col-md-2 {
+        width: 16.666666666666664%;
+      }
+      
+      .col-md-1 {
+        width: 8.333333333333332%;
+      }
+      
+   
+  
+}
+  

@@ -1,0 +1,17 @@
+.review-form {
+	display: block;
+	background: lighten($dark, 75%);
+	padding: rem(30px);
+	border: 1px solid $gray-300;
+	
+	@include media-breakpoint-down(lg) {
+		padding: rem(15px);
+	}
+	
+	& h2 {
+		font-size: rem(20px);
+		border-bottom: 1px solid $gray-300;
+		margin: 0 0 rem(15px);
+		padding-bottom: rem(10px);
+	}
+}

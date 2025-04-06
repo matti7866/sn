@@ -1,0 +1,188 @@
+.category-item {
+	&.full {
+		width: rem(250px);
+		height: 100%;
+		margin: 0;
+		display: block;
+		position: relative;
+		text-decoration: none;
+		
+		@include media-breakpoint-down(xl) {
+			float: none;
+			width: auto;
+			height: auto;
+		}
+		
+		& .item {
+			position: absolute;
+			top: -1px;
+			left: 0;
+			right: 0;
+			bottom: -1px;
+			overflow: hidden;
+			
+			@include media-breakpoint-down(lg) {
+				position: relative;
+				top: 0;
+				bottom: 0;
+			}
+			@include media-breakpoint-down(md) {
+				@include border-radius($border-radius-lg);
+				margin: 0 0 rem(15px);
+			}
+		
+			& .item-cover {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				z-index: 1000;
+				background-size: cover;
+				background-repeat: no-repeat;
+				background-position: center;
+				
+				@include media-breakpoint-down(lg) {
+					@include display-flex();
+					@include flex-align(center);
+				}
+			
+				& img {
+					max-height: 100%;
+					
+					@include media-breakpoint-down(lg) {
+						width: 100%;
+						max-width: 100%;
+						max-height: inherit;
+					}
+				}
+				& a {
+					color: $white;
+				}
+			}
+			& .item-info {
+				padding: rem(20px);
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				z-index: 1020;
+				color: rgba($white, .75);
+				
+				@include media-breakpoint-down(lg) {
+					position: relative;
+				}
+			
+				&.top {
+					bottom: auto;
+					top: 0;
+				}
+				&.bottom {
+					top: auto;
+					bottom: 0;
+				}
+			}
+			& .item-title {
+				margin: 0 0 rem(5px);
+				font-size: rem(16px);
+				line-height: $line-height-base;
+				color: $white;
+			}
+			& .item-desc {
+				font-size: rem(13px);
+				margin: 0 0 rem(5px);
+			}
+			& .item-price {
+				font-size: rem(24px);
+				line-height: $line-height-sm;
+				color: $white;
+			}
+			&:before {
+				content: '';
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: rgba($black, .5);
+				z-index: 1010;
+			}
+		}
+	}
+	&.list {
+		@include flex(1);
+		@include media-breakpoint-down(lg) {
+			background: $white;
+			@include border-radius($border-radius);
+		}
+		@include media-breakpoint-down(sm) {
+			background: none;
+		}
+		& .item-row {
+			@include display-flex();
+			@include flex-wrap(wrap);
+			
+			&:first-child {
+				& .item {
+					&.item-thumbnail {
+						&:first-child {
+							@if $enable-rtl {
+								@include border-radius(0 $border-radius-lg 0 0);
+							} @else {
+								@include border-radius($border-radius-lg 0 0 0);
+							}
+						}
+					}
+				}
+			}
+			&:last-child {
+				& .item {
+					&.item-thumbnail {
+						&:first-child {
+							@if $enable-rtl {
+								@include border-radius(0 0 $border-radius-lg 0);
+							} @else {
+								@include border-radius(0 0 0 $border-radius-lg);
+							}
+						}
+					}
+				}
+			}
+			& + .item-row {
+				& .item {
+					border-top: 1px solid $gray-300;
+				}
+			}
+		}
+		& .item {
+			width: 33.33%;
+			border: none;
+			margin: 0;
+			background: none;
+			
+			@include border-radius(0 !important);
+			@include media-breakpoint-down(lg) {
+				margin-bottom: 0;
+			}
+			@include media-breakpoint-down(sm) {
+				float: none;
+				width: 100%;
+				margin: 0 0 rem(15px);
+				border: 1px solid $gray-300;
+				background: $white;
+				
+				@include border-radius($border-radius-lg !important);
+			}
+			
+			& + .item {
+				@if $enable-rtl {
+					border-right: 1px solid $gray-300;
+				} @else {
+					border-left: 1px solid $gray-300;
+				}
+			}
+		}
+	}
+}

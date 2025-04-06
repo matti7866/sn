@@ -1,0 +1,37 @@
+.threads-list {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	
+	@include clearfix();
+	
+	& > li {
+		margin: 0 rem(15px);
+		padding: rem(15px) 0;
+		font-size: $font-size-sm * 0.95;
+		line-height: $line-height-base;
+		color: lighten($gray-600, 10%);
+		
+		& a {
+			color: $primary;
+			
+			&:hover,
+			&:focus {
+				color: darken($primary, 15%);
+			}
+		}
+		& .title {
+			font-size: $font-size-base;
+			margin: 0 0 rem(5px);
+			line-height: $line-height-sm;
+			color: $dark;
+			
+			& a {
+				color: $dark;
+			}
+		}
+		& + li {
+			border-top: 2px solid $gray-300;
+		}
+	}
+}
