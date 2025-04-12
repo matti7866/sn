@@ -30,12 +30,6 @@
                         <span id="digital-clock">00:00:00</span>
                     </div>
                 </div>
-                <!-- Dubai Weather (Separated with Margin) -->
-                <div class="navbar-item" style="margin-left: 20px;">
-                    <div style="font-family: 'Arial', sans-serif; font-size: 18px; color: #fff; background: rgba(0, 0, 0, 0.3); padding: 5px 15px; border-radius: 20px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); position: relative; z-index: 1;">
-                        <span id="weather-info">Loading Dubai weather...</span>
-                    </div>
-                </div>
                 <!-- END Digital Clock and Dubai Weather -->
                 <div class="navbar-item navbar-form">
                     <form action="" method="POST" name="search">
@@ -49,6 +43,11 @@
                 <div class="navbar-item">
                     <a href="chatroom.php" class="navbar-link" title="Chatroom">
                         <i class="fa fa-comments"></i>
+                    </a>
+                </div>
+                <div class="navbar-item">
+                    <a href="notes.php" class="navbar-link" title="Chatroom">
+                        <i class="fa fa-sticky-note"></i>
                     </a>
                 </div>
                 <div class="navbar-item dropdown">

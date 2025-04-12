@@ -1,53 +1,106 @@
 <?php
+// Display all errors
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-include 'phpMailer/PHPMailer.php';
-include 'phpMailer/SMTP.php';
-include 'phpMailer/Exception.php';
+echo "<h1>CURL Extension Test</h1>";
 
-// Define name spaces
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
-// Create instance of phpmailer
-$mail = new PHPMailer(true);
-// Set mailer to use SMTP
-try{
-    $mail->SMTPDebug = SMTP::DEBUG_SERVER;   
-    $mail->isSMTP();    
-    // define smtp host
-    $mail->Host = "smtp.domain.com";
-    // Enable smtp authentication 
-    $mail->SMTPAuth = "true";
-    //USername
-    $mail->Username = "test@sntrips.com";
-    // Password
-    $mail->Password = "Test@123";
-    //Enable implicit TLS encryption
-    $mail->SMTPSecure = 'tls';  
-    // set port  to connect SMTP
-    $mail->Port = "587";
-    //Recipients
-    $mail->setFrom('test@sntrips.com');
-    $mail->addAddress('gen.sayedmahbobi@gmail.com');     //Add a recipient
-    $mail->isHTML(true); 
-// Subject
-
-$mail->Subject = "NEw Email";
-$mail->Body    = 'This is the HTML message body <b>in bold!</b>';
-// Message Body
-$mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
-
-
-// send mail
-if($mail->Send()){
-    echo "Success";
+// Check if curl extension is loaded
+if (!extension_loaded('curl')) {
+    echo "<p style='color: red'>ERROR: cURL extension is NOT loaded!</p>";
+    exit;
+} else {
+    echo "<p style='color: green'>SUCCESS: cURL extension is loaded.</p>";
 }
 
-$mail->smtpClose();
+// Test basic curl functionality
+echo "<h2>Testing basic cURL request:</h2>";
+$ch = curl_init('https://httpbin.org/get');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = curl_exec($ch);
 
-// Close connection
-} catch (phpmailerException $e) {
-  echo $e->errorMessage(); //Pretty error messages from PHPMailer
-} catch (Exception $e) {
-  echo $e->getMessage(); //Boring error messages from anything else!
+if ($response === false) {
+    echo "<p style='color: red'>ERROR: cURL request failed: " . curl_error($ch) . "</p>";
+} else {
+    echo "<p style='color: green'>SUCCESS: cURL request worked!</p>";
+    echo "<pre>" . htmlspecialchars(substr($response, 0, 200)) . "...</pre>";
+}
+curl_close($ch);
+
+// Check service account file
+echo "<h2>Testing Google service account credentials:</h2>";
+$serviceAccountFile = __DIR__ . '/service-account-key.json';
+
+if (!file_exists($serviceAccountFile)) {
+    echo "<p style='color: red'>ERROR: Service account file does not exist at: $serviceAccountFile</p>";
+} else {
+    echo "<p style='color: green'>SUCCESS: Service account file exists.</p>";
+    
+    // Check file permissions
+    $perms = fileperms($serviceAccountFile);
+    $fileOwner = fileowner($serviceAccountFile);
+    $fileGroup = filegroup($serviceAccountFile);
+    echo "<p>File permissions: " . decoct($perms & 0777) . "</p>";
+    echo "<p>File owner/group: $fileOwner/$fileGroup</p>";
+    
+    // Try to read the file
+    if (!is_readable($serviceAccountFile)) {
+        echo "<p style='color: red'>ERROR: Service account file is not readable!</p>";
+    } else {
+        echo "<p style='color: green'>SUCCESS: Service account file is readable.</p>";
+        
+        // Check if it's valid JSON
+        $contents = file_get_contents($serviceAccountFile);
+        $json = json_decode($contents, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo "<p style='color: red'>ERROR: Service account file is not valid JSON: " . json_last_error_msg() . "</p>";
+        } else {
+            echo "<p style='color: green'>SUCCESS: Service account file contains valid JSON.</p>";
+            
+            // Check for required keys
+            $requiredKeys = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email'];
+            $missingKeys = [];
+            
+            foreach ($requiredKeys as $key) {
+                if (!isset($json[$key]) || empty($json[$key])) {
+                    $missingKeys[] = $key;
+                }
+            }
+            
+            if (!empty($missingKeys)) {
+                echo "<p style='color: red'>ERROR: Service account file is missing required keys: " . implode(', ', $missingKeys) . "</p>";
+            } else {
+                echo "<p style='color: green'>SUCCESS: Service account file contains all required keys.</p>";
+                echo "<p>Project ID: " . htmlspecialchars($json['project_id']) . "</p>";
+                echo "<p>Client Email: " . htmlspecialchars($json['client_email']) . "</p>";
+            }
+        }
+    }
+}
+
+echo "<h2>processPassport.php file check:</h2>";
+$processorFile = __DIR__ . '/processPassport.php';
+
+if (!file_exists($processorFile)) {
+    echo "<p style='color: red'>ERROR: processPassport.php does not exist!</p>";
+} else {
+    echo "<p style='color: green'>SUCCESS: processPassport.php exists.</p>";
+    
+    // Check file permissions
+    $perms = fileperms($processorFile);
+    echo "<p>File permissions: " . decoct($perms & 0777) . "</p>";
+    
+    // Try to read the first few lines
+    if (!is_readable($processorFile)) {
+        echo "<p style='color: red'>ERROR: processPassport.php is not readable!</p>";
+    } else {
+        echo "<p style='color: green'>SUCCESS: processPassport.php is readable.</p>";
+        
+        // Check for common PHP errors
+        $content = file_get_contents($processorFile);
+        if (strpos($content, '<?php') === false) {
+            echo "<p style='color: red'>WARNING: processPassport.php does not start with <?php tag!</p>";
+        }
+    }
 }

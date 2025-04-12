@@ -1360,22 +1360,96 @@ if (isset($_POST['Select_Customer'])) {
         $pdo->rollback();
         echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
     }
+} else if (isset($_POST['InsertCustomer'])) {
+    try {
+        // Begin transaction
+        $pdo->beginTransaction();
+        
+        // Set defaults
+        $defaultPass = 'abc';
+        $supplier = NULL;
+        $status = 1; // Active by default
+        
+        // Insert customer with all required fields from manageCustomerController.php
+        $sql = "INSERT INTO `customer`(`customer_name`, `customer_phone`, `customer_whatsapp`, 
+                `customer_address`, `customer_email`, `cust_password`, `status`, `affliate_supp_id`) 
+                VALUES (:customer_name, :customer_phone, :customer_whatsapp, 
+                :customer_address, :customer_email, :cust_password, :status, :affliate_supp_id)";
+        
+        // Create prepared statement
+        $stmt = $pdo->prepare($sql);
+        
+        // Bind parameters
+        $stmt->bindParam(':customer_name', $_POST['CustomerName']);
+        $stmt->bindParam(':customer_phone', $_POST['CustomerPhone']);
+        $stmt->bindParam(':customer_whatsapp', $_POST['CustomerPhone']); // Use phone as whatsapp if not specified
+        $stmt->bindParam(':customer_address', $_POST['CustomerAddress']);
+        $stmt->bindParam(':customer_email', $_POST['CustomerEmail']);
+        $stmt->bindParam(':cust_password', $defaultPass);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':affliate_supp_id', $supplier);
+        
+        // Execute the statement
+        $stmt->execute();
+        
+        // Get the inserted ID
+        $customer_id = $pdo->lastInsertId();
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        // Return success
+        echo "Success";
+    } catch (PDOException $e) {
+        // Roll back the transaction if something failed
+        $pdo->rollback();
+        echo "ERROR: " . $e->getMessage();
+    }
 }
+
 function uploadFile($name)
 {
     $new_image_name = '';
-    if ($_FILES[$name]['size'] <= 2097152) {
+    if ($_FILES[$name]['size'] <= 20971520) { // 20MB limit instead of 2MB
         $file_name = $_FILES[$name]['name'];
         $extension = pathinfo($file_name, PATHINFO_EXTENSION);
         $valid_extensions = array('jpg', 'png', 'jpeg', 'doc', 'docx', 'pdf', 'gif', 'txt', 'csv', 'ppt', 'pptx', 'rar', 'xls', 'xlsx', 'zip');
         if (in_array(strtolower($extension), $valid_extensions)) {
             $new_image_name = rand() . '.' . $extension;
             $path = "residence/" . $new_image_name;
-            move_uploaded_file($_FILES[$name]['tmp_name'], $path);
+            
+            // Ensure residence directory exists
+            if (!file_exists("residence")) {
+                mkdir("residence", 0777, true);
+            }
+            
+            // Use copy as fallback if move_uploaded_file fails
+            if (!move_uploaded_file($_FILES[$name]['tmp_name'], $path)) {
+                error_log("Failed to move uploaded file: " . $_FILES[$name]['name'] . " to " . $path);
+                
+                // Try direct copy as fallback
+                if (copy($_FILES[$name]['tmp_name'], $path)) {
+                    error_log("Successfully copied file as fallback");
+                } else {
+                    error_log("Failed to copy file as fallback");
+                    $new_image_name = '';
+                }
+            }
+            
+            // Verify file was uploaded
+            if (!file_exists($path) || filesize($path) === 0) {
+                error_log("File upload failed or file is empty: " . $path);
+                $new_image_name = '';
+            }
+            
             return $new_image_name;
         } else {
+            error_log("Invalid file extension: " . $extension);
             $new_image_name = '';
         }
+    } else {
+        error_log("File too large: " . $_FILES[$name]['size'] . " bytes");
+        $new_image_name = '';
     }
     return $new_image_name;
 }

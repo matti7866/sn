@@ -85,3 +85,10 @@
     margin-left:100px;
     margin-top:-10px;
 }
+
+/* Ensure helper text is always visible */
+.text-muted {
+    display: block !important;
+    margin-top: 5px;
+    visibility: visible !important;
+}

@@ -109,12 +109,48 @@ if (empty($getStatmentInfoForReceiptByCusAndCur)) {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
   <link href="style.css?v=<?php echo time() ?>" rel="stylesheet" />
+  <style>
+    .action-button {
+      position: fixed;
+      padding: 10px 15px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      z-index: 1000;
+      font-family: 'Poppins', sans-serif;
+      margin: 5px;
+    }
+    .print-button {
+      top: 20px;
+      right: 20px;
+      background-color: #007bff;
+    }
+    .print-button:hover {
+      background-color: #0056b3;
+    }
+    @media print {
+      .action-button {
+        display: none;
+      }
+    }
+  </style>
 
-  <?php if ($download == true) { ?>
-    <script>
-      window.print();
-    </script>
-  <?php } ?>
+  <script>
+    // Create button for print
+    window.onload = function() {
+      // Create print button
+      var printBtn = document.createElement('button');
+      printBtn.innerHTML = 'Print Receipt';
+      printBtn.className = 'action-button print-button';
+      printBtn.onclick = function() {
+        document.title = '<?php echo $payment['PassengerName']; ?>_<?php echo number_format($payment['salePrice'], 2); ?>_<?php echo $resp['invoiceNumber']; ?>.pdf';
+        window.print();
+        document.title = 'Print Receipt <?php echo $resp['invoiceNumber'] ?>';
+      };
+      document.body.insertBefore(printBtn, document.body.firstChild);
+    }
+  </script>
 </head>
 
 <body>

@@ -64,6 +64,39 @@
     background-color: #ADD8E6;
     font-weight: bold;
    }
+   
+   /* Progress circle styling */
+   .progress-container {
+     padding: 10px;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+   }
+   
+   .circle-progress {
+     width: 80px !important;
+     height: 80px !important;
+     max-width: 80px;
+     max-height: 80px;
+     position: relative;
+   }
+   
+   .circle-progress-value {
+     stroke-width: 9px !important;
+     stroke-linecap: round !important;
+   }
+   
+   .circle-progress-circle {
+     stroke-width: 2px !important;
+   }
+   
+   .circle-progress-text {
+     fill: white !important;
+     font-size: 18px !important;
+     font-weight: bold !important;
+     dominant-baseline: middle !important;
+     text-anchor: middle !important;
+   }
 </style>
 <?php
   include 'nav.php';
@@ -87,75 +120,66 @@
                     <div class="col-12" >
                         <div class="card border-0 mb-3 bg-gray-800 text-white   " data-scrollbar="true" data-height="100%" style="height: 100%;" >
                             <div class="card-body" >
-                                <div class="row">  
-                                
-                                  <div class="col-lg-4 offset-6" id="searchAreaDiv">
-                                      
-                                      <input type="text" style="width:100%" onclick="getSearchRpt()"  class="form-control pull-right" onkeyup="getSearchRpt()"  placeholder="Customer,Passenger,Company name, Company Number" id="search"/>
-                                      <div class="row">
-                                        <div class="col-12">
-                                        <div class="card mb-4 border-0" id="searchDropdown">
-                                        
+                                <div class="row align-items-center mb-3">  
+                                  <div class="col-lg-8">
+                                      <div class="input-group">
+                                          <input type="text" onclick="getSearchRpt()" class="form-control" onkeyup="getSearchRpt()" placeholder="Customer,Passenger,Company name, Company Number" id="search"/>
+                                          <a href="residence.php" class="btn btn-primary ms-2"><i class="fa fa-plus-circle me-1"></i> Add New Residence</a>
                                       </div>
-                                        </div>
-                                      </div>
-                                      
+                                      <div class="card mb-4 border-0" id="searchDropdown"></div>
                                   </div>
                                   <div class="col-lg-2 d-none" id="currencyAreaForRpt">
-                                    <select class="form-control" onchange="getAbstrictView()" style="width:100%" name="residenceCurrency" id="residenceCurrency" spry:default="select one"></select>
+                                      <select class="form-control" onchange="getAbstrictView()" style="width:100%" name="residenceCurrency" id="residenceCurrency" spry:default="select one"></select>
                                   </div>
-                                  <div class="col-lg-2 mb-4">
-                                      <a href="residence.php" class="pull-right mt-2" > Add New Residence </a>
-                                  </div>
-                                  <hr />
-                                  <div class="col-lg-12">
-                                      <ul class="nav nav-tabs " id="residenceTabs" >
-                                        <li class="nav-item">
-                                        <a href="#default-tab-1" data-bs-toggle="tab" class="nav-link active">All Residence Records</a>
-                                        </li>
-                                       </ul>
-                                  </div>
-                                  
-                                <div class="tab-content bg-gray-800 panel p-3 rounded-0 rounded-bottom">
-                                    <div class="tab-pane  fade active show bg-gray-800" id="default-tab-1">
-                                        <hr />
-                                        <!-- Begging of Accordin -->
-                                        <div class="accordion" id="accordion">
-                                            <div class="accordion-item border-0">
-                                              <div class="accordion-header" id="headingOne">
-                                                <button class="accordion-button bg-gray-900 text-white px-3 py-10px pointer-cursor" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
-                                                  <i class="fa fa-circle fa-fw text-blue me-2 fs-8px"></i> View Residence Outstaning
-                                                </button>
-                                              </div>
-                                              <div id="collapseOne" class="accordion-collapse collapse " data-bs-parent="#accordion">
-                                                <div class="accordion-body bg-gray-800 text-white">
-                                                  <div class="chartMenu">
-                                                  </div>
-                                                  <div class="chartCard">
-                                                    <div class="chartBox">
-                                                      <canvas id="myChart"></canvas>
-                                                    </div>
+                                </div>
+                                <hr />
+                                <div class="col-lg-12">
+                                    <ul class="nav nav-tabs " id="residenceTabs" >
+                                      <li class="nav-item">
+                                      <a href="#default-tab-1" data-bs-toggle="tab" class="nav-link active">All Residence Records</a>
+                                      </li>
+                                     </ul>
+                                </div>
+                                
+                              <div class="tab-content bg-gray-800 panel p-3 rounded-0 rounded-bottom">
+                                  <div class="tab-pane  fade active show bg-gray-800" id="default-tab-1">
+                                      <hr />
+                                      <!-- Begging of Accordin -->
+                                      <div class="accordion" id="accordion">
+                                          <div class="accordion-item border-0">
+                                            <div class="accordion-header" id="headingOne">
+                                              <button class="accordion-button bg-gray-900 text-white px-3 py-10px pointer-cursor" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                                <i class="fa fa-circle fa-fw text-blue me-2 fs-8px"></i> View Residence Outstaning
+                                              </button>
+                                            </div>
+                                            <div id="collapseOne" class="accordion-collapse collapse " data-bs-parent="#accordion">
+                                              <div class="accordion-body bg-gray-800 text-white">
+                                                <div class="chartMenu">
+                                                </div>
+                                                <div class="chartCard">
+                                                  <div class="chartBox">
+                                                    <canvas id="myChart"></canvas>
                                                   </div>
                                                 </div>
                                               </div>
                                             </div>
                                           </div>
-                                        <!-- End of Accordin -->
-                                        <hr />
-                                        <div id="DailyRpt"></div>
-                                        <div id="DailyRptPagination" class="d-flex justify-content-center m-3"></div>
-                                    </div>
-                                </div>
-                                
-                                
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-            </div>
-        </div>
-    </div>
+                                        </div>
+                                      <!-- End of Accordin -->
+                                      <hr />
+                                      <div id="DailyRpt"></div>
+                                      <div id="DailyRptPagination" class="d-flex justify-content-center m-3"></div>
+                                  </div>
+                              </div>
+                              
+                              
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  </div>
+          </div>
+      </div>
   </div>
 </div>
 <!-- Payment Modal -->
@@ -252,42 +276,63 @@
 <div class="modal fade" id="viewFineModal" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header bg-dark text-white ">
-        <h5 class="modal-title font-weight-bold" id="exampleModalLabel">View Fine</h5>
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title font-weight-bold" id="exampleModalLabel"><i class="fa fa-money-bill me-2"></i>Residence Fine Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
       </div>
-      <div class="modal-body">
-        <div class="row">
-          <div class="col-md-12">
-          <form class="col-md-6 form-group" style="display:none"  method="post" enctype="multipart/form-data" id="chargeUpload" >
-            <input type="file" name="Chargesuploader" id="Chargesuploader" />
-            <input type="text" name="uploadChargesID" id="uploadChargesID" />
-            <button type="submit" id="submitChargeUploadForm" >Call</button>
-          </form>
-            <div class="table-responsive ">
-              <table   class="table  table-striped table-hover ">
-                <thead class="bg-dark text-white">
-                  <tr>
-                    <th>S#</th>
-                    <th >Type</th>
-                    <th >Fine Amount</th>
-                    <th >Account</th>
-                    <th >Date</th>
-                    <th >Charged By</th>
-                    <th >Receipt</th>
-                    <th class="text-center" >Action</th>
-                  </tr>
-                </thead>
-                <tbody id="viewFineTable">
-                   
-                </tbody>
-              </table>
-            </div> 
+      <div class="modal-body p-0">
+        <!-- Summary Section -->
+        <div class="bg-dark p-3 mb-3">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="alert bg-dark text-white border border-secondary mb-0" id="fineSummaryAlert">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 text-white">Outstanding Fine Balance</h6>
+                    <div id="outstandingFineAmount"></div>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="window.location.reload()">
+                    <i class="fa fa-refresh me-1"></i> Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+        
+        <form class="d-none" method="post" enctype="multipart/form-data" id="chargeUpload">
+          <input type="file" name="Chargesuploader" id="Chargesuploader" />
+          <input type="text" name="uploadChargesID" id="uploadChargesID" />
+          <button type="submit" id="submitChargeUploadForm">Call</button>
+        </form>
+        
+        <div class="table-responsive px-3">
+          <table class="table table-bordered table-hover">
+            <thead class="bg-primary text-white">
+              <tr>
+                <th width="5%">#</th>
+                <th width="8%">Type</th>
+                <th width="15%">Fine Amount</th>
+                <th width="15%">Account</th>
+                <th width="15%">Date</th>
+                <th width="15%">Charged By</th>
+                <th width="12%">Receipt</th>
+                <th width="15%" class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="viewFineTable">
+               <!-- Data will be loaded here -->
+            </tbody>
+          </table>
+        </div> 
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer bg-dark">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fa fa-times me-1"></i> Close
+        </button>
+        <button type="button" class="btn btn-primary" onclick="openResidenceFineDialog($('#uploadChargesID').val())">
+          <i class="fa fa-plus me-1"></i> Add New Fine
+        </button>
       </div>
     </div>
   </div>
@@ -583,43 +628,131 @@ function getPendingResidence(){
               }
               
               dailyrptTable += '<div class="row mb-3">';
-              dailyrptTable += '<div class="col-lg-6 p-3"><h2> <i>' + dataArray[i].passenger_name +  
-              '</i></h2><div class="badge ' + statusClass + ' mb-2">' + statusText + '</div>';
-              dailyrptTable += '<p class="line-height-lg-point6">Customer Name: ' + dataArray[i].customer_name + ' '+
-              ' Nationality: '+ dataArray[i].countryName + ' ' + 'Residence Type: ' + 
-              dataArray[i].country_names + '</p><p class="line-height-lg-point6">Company Name: ' + 
-              dataArray[i].company_name + ' '+ ' Company Number: '+ dataArray[i].company_number + '</p><p class="line-height-lg-point6">Sale Price: <span  class="text-info" '+
-              'style="font-size:14px">' + numeral(dataArray[i].sale_price).format('0,0') + ' '  + 
-              dataArray[i].currencyName +'</span> &nbsp;&nbsp; Total Paid: <span  class="text-info" '+
-              'style="font-size:14px">'+ numeral(dataArray[i].total).format('0,0') + ' ' + 
-              dataArray[i].currencyName +'</span>  &nbsp;&nbsp;';
+              dailyrptTable += '<div class="col-12">';
+              
+              // New structured information display with proper formatting - full width card
+              dailyrptTable += '<div class="card border-0 bg-gray-700 mb-2">';
+              dailyrptTable += '<div class="card-body p-3">';
+              
+              // Header with name and progress indicator
+              dailyrptTable += '<div class="row mb-3 align-items-center">';
+              dailyrptTable += '<div class="col-md-8">';
+              dailyrptTable += '<h2 class="mb-2"><i>' + dataArray[i].passenger_name + '</i></h2>';
+              dailyrptTable += '<div class="badge ' + statusClass + ' mb-2">' + statusText + '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '<div class="col-md-4 text-end">';
+              dailyrptTable += '<div class="d-flex justify-content-end align-items-center">';
+              dailyrptTable += '<div class="text-white-50 me-3">Completion: </div>';
+              dailyrptTable += '<div class="progress-container p-2" style="min-width:100px;">';
+              dailyrptTable += '<div class="progress" id="pendingCircle'+ j +'" style="height:80px;width:80px;background-color:#2d353c;font-size:15px;margin:auto;"></div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              
+              // Main content area
+              dailyrptTable += '<div class="row">';
+              
+              // Left side - Customer and Company info
+              dailyrptTable += '<div class="col-md-8">';
+              
+              // Customer section
+              dailyrptTable += '<div class="row mb-3 border-bottom pb-2">';
+              dailyrptTable += '<div class="col-md-12">';
+              dailyrptTable += '<h6 class="text-white-50 mb-1 small">CUSTOMER INFORMATION</h6>';
+              dailyrptTable += '<div class="row">';
+              dailyrptTable += '<div class="col-md-6"><strong class="text-white">Customer Name:</strong> <span class="text-light">' + dataArray[i].customer_name + '</span></div>';
+              dailyrptTable += '<div class="col-md-6"><strong class="text-white">Nationality:</strong> <span class="text-light">' + dataArray[i].countryName + '</span></div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '<div class="row mt-1">';
+              dailyrptTable += '<div class="col-md-12"><strong class="text-white">Residence Type:</strong> <span class="text-light">' + dataArray[i].country_names + '</span></div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              
+              // Company section
+              dailyrptTable += '<div class="row mb-3 border-bottom pb-2">';
+              dailyrptTable += '<div class="col-md-12">';
+              dailyrptTable += '<h6 class="text-white-50 mb-1 small">COMPANY INFORMATION</h6>';
+              dailyrptTable += '<div class="row">';
+              dailyrptTable += '<div class="col-md-6"><strong class="text-white">Company Name:</strong> <span class="text-light">' + dataArray[i].company_name + '</span></div>';
+              dailyrptTable += '<div class="col-md-6"><strong class="text-white">Company Number:</strong> <span class="text-light">' + dataArray[i].company_number + '</span></div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              
+              dailyrptTable += '</div>'; // End left column
+              
+              // Right side - Financial summary
+              dailyrptTable += '<div class="col-md-4 border-start border-dark">';
+              
+              // Financial section
+              dailyrptTable += '<div class="row">';
+              dailyrptTable += '<div class="col-md-12">';
+              dailyrptTable += '<h6 class="text-white-50 mb-1 small">FINANCIAL SUMMARY</h6>';
+              
+              // Sale price - always show this
+              dailyrptTable += '<div class="mb-2"><strong class="text-white">Sale Price:</strong> <span class="text-info">' + numeral(dataArray[i].sale_price).format('0,0') + ' ' + dataArray[i].currencyName + '</span></div>';
+              
+              // Add fine information if it exists
               if(dataArray[i].total_Fine != 0){
-                dailyrptTable += 'Total Fine: <span  class="text-info" '+
-              'style="font-size:14px">'+ numeral(dataArray[i].total_Fine).format('0,0') + ' ' + 
-              dataArray[i].residenceFineCurrency +'</span> &nbsp;&nbsp; Fine Paid: <span  class="text-info" '+
-              'style="font-size:14px">'+ numeral(dataArray[i].totalFinePaid).format('0,0') + ' ' + 
-              dataArray[i].residenceFineCurrency +'</span>';
+                dailyrptTable += '<div class="mb-2"><strong class="text-white">Total Fine:</strong> <span class="text-info">' + numeral(dataArray[i].total_Fine).format('0,0') + ' ' + dataArray[i].residenceFineCurrency + '</span></div>';
+                dailyrptTable += '<div class="mb-2"><strong class="text-white">Total Fine Paid:</strong> <span class="text-info">' + numeral(dataArray[i].totalFinePaid).format('0,0') + ' ' + dataArray[i].residenceFineCurrency + '</span></div>';
               }
               
-              dailyrptTable +='</p><div class="d-flex"><p >Remaining: '+
-              '<span class="text-red" style="font-size:14px">'+ numeral((dataArray[i].sale_price - 
-              dataArray[i].total)).format('0,0') + ' ' + dataArray[i].currencyName + '</span>';
-              if(dataArray[i].total_Fine != 0){
-                dailyrptTable += '&nbsp;&nbsp;Remaining Fine: '+
-                '<span class="text-red" style="font-size:14px">'+ numeral((dataArray[i].total_Fine - 
-                dataArray[i].totalFinePaid)).format('0,0') + ' ' + dataArray[i].residenceFineCurrency + '</span>';
+              // Total paid - always show this
+              dailyrptTable += '<div class="mb-2"><strong class="text-white">Total Paid:</strong> <span class="text-info">' + numeral(dataArray[i].total).format('0,0') + ' ' + dataArray[i].currencyName + '</span></div>';
+              
+              // Calculate total remaining
+              let totalRemaining = parseFloat(dataArray[i].sale_price) - parseFloat(dataArray[i].total);
+              
+              // Add fine remaining if currencies match
+              if(dataArray[i].total_Fine != 0 && dataArray[i].currencyName === dataArray[i].residenceFineCurrency) {
+                totalRemaining += (parseFloat(dataArray[i].total_Fine) - parseFloat(dataArray[i].totalFinePaid));
               }
-              dailyrptTable +='</p></div><div class="d-flex mt-2"><button '+
-              'class="btn btn-danger" type="button" onclick="getPendingPayment('+dataArray[i].main_residenceID+')"><i class="fa fa-cc-paypal"></i> Make Payment</button>&nbsp;'+
-              '<button class="btn btn-info" type="button" onclick="viewPaymentHistory('+dataArray[i].main_residenceID+')"><i class="fa fa-history"></i> Payment History</button>&nbsp;'+
-              '<div style="margin-top:-15px"><div class="btn-group"><button type="button" class="btn btn-danger mt-3 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">'+
-              'More <i class="fa fa-caret-down" aria-hidden="true"></i></button><ul class="dropdown-menu"><li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog('+dataArray[i].main_residenceID+')"><i class="fa fa-plus"></i> Add Fine</button></li><li><button class="dropdown-item" type="button" onclick="viewFine('+dataArray[i].main_residenceID+')"><i class="fa fa-eye"></i> View Fine</button></li><li><button class="dropdown-item" type="button" onclick="deleteResidence('+dataArray[i].main_residenceID+')"><i class="fa fa-trash"></i> Delete Residence</button></li></ul>'+
-              '</div></div></div></div><div class="col-lg-6 d-flex justify-content-xl-end justify-content-center"><div style="position:relative"><div class="progress" id="pendingCircle'+ j +'" '+
-              'style="height:auto;width:100px;background-color:#2d353c;font-size:17px; ">'+
-              '</div><div style="position:absolute;top:120px;left:10px"><a href="residence.php?id='
-              +dataArray[i].main_residenceID + '&stp='+ dataArray[i].completedStep + '" '+
-              'class="btn btn-info" type="button" >' + (dataArray[i].completedStep == 10 ? 'View' : 'Continue') +
-              '</a></div></div></div></div><hr class="reportLineBreaker" />';
+              
+              // Total remaining - always show this
+              dailyrptTable += '<div class="mb-2"><strong class="text-white font-weight-bold">Total Remaining:</strong> <span class="text-danger font-weight-bold">' + numeral(totalRemaining).format('0,0') + ' ' + dataArray[i].currencyName + '</span></div>';
+              
+              // Continue/View button
+              dailyrptTable += '<div class="mt-3">';
+              dailyrptTable += '<a href="residence.php?id=' + dataArray[i].main_residenceID + '&stp=' + dataArray[i].completedStep + '" class="btn btn-info w-100" type="button"><i class="fa fa-' + (dataArray[i].completedStep == 10 ? 'eye' : 'arrow-right') + '"></i> ' + (dataArray[i].completedStep == 10 ? 'View' : 'Continue') + '</a>';
+              dailyrptTable += '</div>';
+              
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>'; // End right column
+              
+              dailyrptTable += '</div>'; // End main content row
+              
+              // Action buttons row
+              dailyrptTable += '<div class="row mt-3">';
+              dailyrptTable += '<div class="col-12">';
+              dailyrptTable += '<div class="d-flex flex-wrap gap-2">';
+              dailyrptTable += '<button class="btn btn-danger" type="button" onclick="getPendingPayment('+dataArray[i].main_residenceID+')"><i class="fa fa-cc-paypal"></i> Make Payment</button>';
+              dailyrptTable += '<button class="btn btn-warning" type="button" onclick="viewFine('+dataArray[i].main_residenceID+')"><i class="fa fa-money"></i> Pay Fine</button>';
+              dailyrptTable += '<button class="btn btn-info" type="button" onclick="viewPaymentHistory('+dataArray[i].main_residenceID+')"><i class="fa fa-history"></i> Payment History</button>';
+              dailyrptTable += '<a href="printLetter.php?id='+dataArray[i].main_residenceID+'&type=noc" class="btn btn-primary" type="button"><i class="fa fa-file-text"></i> NOC</a>';
+              dailyrptTable += '<button class="btn btn-success" type="button" onclick="openSalaryCertificateDialog('+dataArray[i].main_residenceID+')"><i class="fa fa-file-text"></i> Salary Certificate</button>';
+              dailyrptTable += '<div class="btn-group">';
+              dailyrptTable += '<button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">';
+              dailyrptTable += 'More <i class="fa fa-caret-down" aria-hidden="true"></i></button>';
+              dailyrptTable += '<ul class="dropdown-menu">';
+              dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog('+dataArray[i].main_residenceID+')"><i class="fa fa-plus"></i> Add Fine</button></li>';
+              dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="viewFine('+dataArray[i].main_residenceID+')"><i class="fa fa-eye"></i> View Fine</button></li>';
+              dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="deleteResidence('+dataArray[i].main_residenceID+')"><i class="fa fa-trash"></i> Delete Residence</button></li>';
+              dailyrptTable += '</ul>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              dailyrptTable += '</div>';
+              
+              dailyrptTable += '</div>'; // End card-body
+              dailyrptTable += '</div>'; // End card
+              
+              dailyrptTable += '</div>'; // End col-12
+              dailyrptTable += '</div>'; // End row
+              dailyrptTable += '<hr class="reportLineBreaker" />';
               j++;
             }
             
@@ -645,13 +778,13 @@ function getPendingResidence(){
         } catch (error) {
           console.error("Error handling response:", error);
           console.log("Raw response:", response);
-          $('#DailyRpt').empty().append('<div class="row"><h1 class="text-center text-danger">Error loading data</h1></div>');
+          $('#DailyRpt').empty().append('<div class="row"><h1 class="text-center text-danger">Error loading data: ' + error.message + '</h1></div>');
           $('#DailyRptPagination').empty();
         }
     },
     error: function(jqXHR, textStatus, errorThrown) {
       console.error("AJAX error:", textStatus, errorThrown);
-      $('#DailyRpt').empty().append('<div class="row"><h1 class="text-center text-danger">Error communicating with server</h1></div>');
+      $('#DailyRpt').empty().append('<div class="row"><h1 class="text-center text-danger">Error communicating with server: ' + textStatus + '</h1></div>');
       $('#DailyRptPagination').empty();
     }
   });
@@ -726,7 +859,8 @@ function changePage(page, callbackFunction) {
 function setCircleAttributes(color){
     $('.circle-progress-value').css({'stroke-width': '9px','stroke': color,'stroke-linecap': 'round'});
     $('.circle-progress-circle').css({'stroke-width': '2px'});
-    $('.circle-progress-text').css({'fill':'white'})
+    $('.circle-progress-text').css({'fill':'white', 'font-size': '18px', 'font-weight': 'bold'});
+    $('.circle-progress').css({'width': '80px', 'height': '80px'});
 }
 function getPendingPayment(id){
   event.preventDefault();
@@ -886,41 +1020,127 @@ function getPendingPayForResidence(){
               var pendingPaymentTable = '';
               var j = 1;
               for(var i =0; i<pendingPaymentResidenceRpt.length; i++){
-                pendingPaymentTable += '<div class="row"><div class="col-lg-6"><h2> <i>' + pendingPaymentResidenceRpt[i].passenger_name +  
-                '</i></h2><p class="line-height-lg-point6">Customer Name: ' + pendingPaymentResidenceRpt[i].customer_name + ' '+
-                ' Nationality: '+ pendingPaymentResidenceRpt[i].countryName + ' ' + 'Residence Type: ' + 
-                pendingPaymentResidenceRpt[i].country_names + '</p><p class="line-height-lg-point6">Company Name: ' + 
-                pendingPaymentResidenceRpt[i].company_name + ' '+ ' Company Number: '+ pendingPaymentResidenceRpt[i].company_number + '</p><p class="line-height-lg-point6">Sale Price: <span  class="text-info" '+
-                'style="font-size:14px">' + numeral(pendingPaymentResidenceRpt[i].sale_price).format('0,0') + ' '  + 
-                pendingPaymentResidenceRpt[i].currencyName +'</span> &nbsp;&nbsp; Total Paid: <span  class="text-info" '+
-                'style="font-size:14px">'+ numeral(pendingPaymentResidenceRpt[i].total).format('0,0') + ' ' + 
-                pendingPaymentResidenceRpt[i].currencyName +'</span> &nbsp;&nbsp;';
+                pendingPaymentTable += '<div class="row"><div class="col-12">';
+                
+                // New structured information display with proper formatting - full width card
+                pendingPaymentTable += '<div class="card border-0 bg-gray-700 mb-2">';
+                pendingPaymentTable += '<div class="card-body p-3">';
+                
+                // Header with name and progress indicator
+                pendingPaymentTable += '<div class="row mb-3 align-items-center">';
+                pendingPaymentTable += '<div class="col-md-8">';
+                pendingPaymentTable += '<h2 class="mb-2"><i>' + pendingPaymentResidenceRpt[i].passenger_name + '</i></h2>';
+                pendingPaymentTable += '<div class="badge bg-warning text-dark mb-2">Payment Pending</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '<div class="col-md-4 text-end">';
+                pendingPaymentTable += '<div class="d-flex justify-content-end align-items-center">';
+                pendingPaymentTable += '<div class="text-white-50 me-3">Completion: </div>';
+                pendingPaymentTable += '<div class="progress-container p-2" style="min-width:100px;">';
+                pendingPaymentTable += '<div class="progress" id="pendingPaymentCircle'+ j +'" style="height:80px;width:80px;background-color:#2d353c;font-size:15px;margin:auto;"></div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                
+                // Main content area
+                pendingPaymentTable += '<div class="row">';
+                
+                // Left side - Customer and Company info
+                pendingPaymentTable += '<div class="col-md-8">';
+                
+                // Customer section
+                pendingPaymentTable += '<div class="row mb-3 border-bottom pb-2">';
+                pendingPaymentTable += '<div class="col-md-12">';
+                pendingPaymentTable += '<h6 class="text-white-50 mb-1 small">CUSTOMER INFORMATION</h6>';
+                pendingPaymentTable += '<div class="row">';
+                pendingPaymentTable += '<div class="col-md-6"><strong class="text-white">Customer Name:</strong> <span class="text-light">' + pendingPaymentResidenceRpt[i].customer_name + '</span></div>';
+                pendingPaymentTable += '<div class="col-md-6"><strong class="text-white">Nationality:</strong> <span class="text-light">' + pendingPaymentResidenceRpt[i].countryName + '</span></div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '<div class="row mt-1">';
+                pendingPaymentTable += '<div class="col-md-12"><strong class="text-white">Residence Type:</strong> <span class="text-light">' + pendingPaymentResidenceRpt[i].country_names + '</span></div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                
+                // Company section
+                pendingPaymentTable += '<div class="row mb-3 border-bottom pb-2">';
+                pendingPaymentTable += '<div class="col-md-12">';
+                pendingPaymentTable += '<h6 class="text-white-50 mb-1 small">COMPANY INFORMATION</h6>';
+                pendingPaymentTable += '<div class="row">';
+                pendingPaymentTable += '<div class="col-md-6"><strong class="text-white">Company Name:</strong> <span class="text-light">' + pendingPaymentResidenceRpt[i].company_name + '</span></div>';
+                pendingPaymentTable += '<div class="col-md-6"><strong class="text-white">Company Number:</strong> <span class="text-light">' + pendingPaymentResidenceRpt[i].company_number + '</span></div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                
+                pendingPaymentTable += '</div>'; // End left column
+                
+                // Right side - Financial summary
+                pendingPaymentTable += '<div class="col-md-4 border-start border-dark">';
+                
+                // Financial section
+                pendingPaymentTable += '<div class="row">';
+                pendingPaymentTable += '<div class="col-md-12">';
+                pendingPaymentTable += '<h6 class="text-white-50 mb-1 small">FINANCIAL SUMMARY</h6>';
+                
+                // Sale price - always show this
+                pendingPaymentTable += '<div class="mb-2"><strong class="text-white">Sale Price:</strong> <span class="text-info">' + numeral(pendingPaymentResidenceRpt[i].sale_price).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].currencyName + '</span></div>';
+                
+                // Add fine information if it exists
                 if(pendingPaymentResidenceRpt[i].total_Fine != 0){
-                  pendingPaymentTable += 'Total Fine: <span  class="text-info" '+
-                'style="font-size:14px">'+ numeral(pendingPaymentResidenceRpt[i].total_Fine).format('0,0') + ' ' + 
-                pendingPaymentResidenceRpt[i].residenceFineCurrency +'</span> &nbsp;&nbsp; Fine Paid: <span  class="text-info" '+
-                'style="font-size:14px">'+ numeral(pendingPaymentResidenceRpt[i].totalFinePaid).format('0,0') + ' ' + 
-                pendingPaymentResidenceRpt[i].residenceFineCurrency +'</span>';
+                  pendingPaymentTable += '<div class="mb-2"><strong class="text-white">Total Fine:</strong> <span class="text-info">' + numeral(pendingPaymentResidenceRpt[i].total_Fine).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].residenceFineCurrency + '</span></div>';
+                  pendingPaymentTable += '<div class="mb-2"><strong class="text-white">Total Fine Paid:</strong> <span class="text-info">' + numeral(pendingPaymentResidenceRpt[i].totalFinePaid).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].residenceFineCurrency + '</span></div>';
                 }
-                pendingPaymentTable +='</p><div class="d-flex"><p>Remaining: '+
-                '<span class="text-red" style="font-size:14px">'+ numeral((pendingPaymentResidenceRpt[i].sale_price - 
-                pendingPaymentResidenceRpt[i].total)).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].currencyName + '</span>';
-                if(pendingPaymentResidenceRpt[i].total_Fine != 0){
-                  pendingPaymentTable += '&nbsp;&nbsp;Remaining Fine: '+
-                  '<span class="text-red" style="font-size:14px">'+ numeral((pendingPaymentResidenceRpt[i].total_Fine - 
-                  pendingPaymentResidenceRpt[i].totalFinePaid)).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].residenceFineCurrency + '</span>';
+                
+                // Total paid - always show this
+                pendingPaymentTable += '<div class="mb-2"><strong class="text-white">Total Paid:</strong> <span class="text-info">' + numeral(pendingPaymentResidenceRpt[i].total).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].currencyName + '</span></div>';
+                
+                // Calculate total remaining
+                let totalRemaining = parseFloat(pendingPaymentResidenceRpt[i].sale_price) - parseFloat(pendingPaymentResidenceRpt[i].total);
+                
+                // Add fine remaining if currencies match
+                if(pendingPaymentResidenceRpt[i].total_Fine != 0 && pendingPaymentResidenceRpt[i].currencyName === pendingPaymentResidenceRpt[i].residenceFineCurrency) {
+                  totalRemaining += (parseFloat(pendingPaymentResidenceRpt[i].total_Fine) - parseFloat(pendingPaymentResidenceRpt[i].totalFinePaid));
                 }
-                pendingPaymentTable += '&nbsp;&nbsp;<button '+
-                'class="btn btn-danger" type="button" onclick="getPendingPayment('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-cc-paypal"></i> Make Payment</button>&nbsp;'+
-                '<button class="btn btn-info" type="button" onclick="viewPaymentHistory('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-history"></i> Payment History</button>&nbsp;';
-                pendingPaymentTable += '<div style="margin-top:-15px"><div class="btn-group"><button type="button" class="btn btn-danger   mt-3 dropdown-toggle"  data-bs-toggle="dropdown" aria-expanded="false">'+
-                'More <i class="fa fa-caret-down" aria-hidden="true"></i></button><ul class="dropdown-menu"><li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-plus"></i> Add Fine</button></li><li><button class="dropdown-item" type="button" onclick="viewFine('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-eye"></i> View Fine</button></li><li><button class="dropdown-item" type="button" onclick="deleteResidence('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-trash"></i> Delete Residence</button></li></ul>'+
-                '</div></div></p></div></div><div class="col-lg-6 d-flex  justify-content-xl-end  justify-content-center"><div style="position:relative"><div class="progress "  id="pendingPaymentCircle'+ j +'" '+
-                'style="height:auto;width:100px;background-color:#2d353c;font-size:17px; ">'+
-                '</div><div style="position:absolute;top:120px;left:15px"><a href="residence.php?id='
-                +pendingPaymentResidenceRpt[i].main_residenceID + '&stp='+ pendingPaymentResidenceRpt[i].completedStep + '" '+
-                'class="btn btn-info" type="button" ><i class="fa fa-eye"></i> View'+
-                '</a></div></div></div></div><hr class="reportLineBreaker" />'
+                
+                // Total remaining - always show this
+                pendingPaymentTable += '<div class="mb-2"><strong class="text-white font-weight-bold">Total Remaining:</strong> <span class="text-danger font-weight-bold">' + numeral(totalRemaining).format('0,0') + ' ' + pendingPaymentResidenceRpt[i].currencyName + '</span></div>';
+                
+                // View button
+                pendingPaymentTable += '<div class="mt-3">';
+                pendingPaymentTable += '<a href="residence.php?id=' + pendingPaymentResidenceRpt[i].main_residenceID + '&stp=' + pendingPaymentResidenceRpt[i].completedStep + '" class="btn btn-info w-100" type="button"><i class="fa fa-eye"></i> View</a>';
+                pendingPaymentTable += '</div>';
+
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>'; // End right column
+                
+                pendingPaymentTable += '</div>'; // End main content row
+                
+                // Action buttons row
+                pendingPaymentTable += '<div class="row mt-3">';
+                pendingPaymentTable += '<div class="col-12">';
+                pendingPaymentTable += '<div class="d-flex flex-wrap gap-2">';
+                pendingPaymentTable += '<button class="btn btn-danger" type="button" onclick="getPendingPayment('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-cc-paypal"></i> Make Payment</button>';
+                pendingPaymentTable += '<button class="btn btn-warning" type="button" onclick="viewFine('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-money"></i> Pay Fine</button>';
+                pendingPaymentTable += '<button class="btn btn-info" type="button" onclick="viewPaymentHistory('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-history"></i> Payment History</button>';
+                pendingPaymentTable += '<div class="btn-group">';
+                pendingPaymentTable += '<button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">';
+                pendingPaymentTable += 'More <i class="fa fa-caret-down" aria-hidden="true"></i></button>';
+                pendingPaymentTable += '<ul class="dropdown-menu">';
+                pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-plus"></i> Add Fine</button></li>';
+                pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="viewFine('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-eye"></i> View Fine</button></li>';
+                pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="deleteResidence('+pendingPaymentResidenceRpt[i].main_residenceID+')"><i class="fa fa-trash"></i> Delete Residence</button></li>';
+                pendingPaymentTable += '</ul>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                pendingPaymentTable += '</div>';
+                
+                pendingPaymentTable += '</div>'; // End card-body
+                pendingPaymentTable += '</div>'; // End card
+                
+                pendingPaymentTable += '</div></div>'; // End col and row
+                pendingPaymentTable += '<hr class="reportLineBreaker" />';
                 j++;
               }
              
@@ -974,28 +1194,107 @@ function getPendingPayForResidence(){
               var completeTable = '';
               var j = 1;
               for(var i =0; i<compeletedResidenceRpt.length; i++){
-                completeTable += '<div class="row"><div class="col-lg-6"><h2> <i>' + compeletedResidenceRpt[i].passenger_name +  
-                '</i></h2><p class="line-height-lg-point6">Customer Name: ' + compeletedResidenceRpt[i].customer_name + ' '+
-                ' Nationality: '+ compeletedResidenceRpt[i].countryName + ' ' + 'Residence Type: ' + 
-                compeletedResidenceRpt[i].country_names + '</p><p class="line-height-lg-point6">Company Name: ' + 
-                compeletedResidenceRpt[i].company_name + ' '+ ' Company Number: '+ compeletedResidenceRpt[i].company_number + '</p><p class="line-height-lg-point6">Sale Price: <span  class="text-info" '+
-                'style="font-size:14px">' + numeral(compeletedResidenceRpt[i].sale_price).format('0,0') + ' '  + 
-                compeletedResidenceRpt[i].currencyName +'</span> &nbsp;&nbsp; Total Paid: <span  class="text-info" '+
-                'style="font-size:14px">'+ numeral(compeletedResidenceRpt[i].total).format('0,0') + ' ' + 
-                compeletedResidenceRpt[i].currencyName +'</span>&nbsp;&nbsp;';
+                completeTable += '<div class="row"><div class="col-12">';
+                
+                // New structured information display with proper formatting - full width card
+                completeTable += '<div class="card border-0 bg-gray-700 mb-2">';
+                completeTable += '<div class="card-body p-3">';
+                
+                // Header with name and progress indicator
+                completeTable += '<div class="row mb-3 align-items-center">';
+                completeTable += '<div class="col-md-8">';
+                completeTable += '<h2 class="mb-2"><i>' + compeletedResidenceRpt[i].passenger_name + '</i></h2>';
+                completeTable += '<div class="badge bg-success mb-2">Completed</div>';
+                completeTable += '</div>';
+                completeTable += '<div class="col-md-4 text-end">';
+                completeTable += '<div class="d-flex justify-content-end align-items-center">';
+                completeTable += '<div class="text-white-50 me-3">Completion: </div>';
+                completeTable += '<div class="progress-container p-2" style="min-width:100px;">';
+                completeTable += '<div class="progress" id="completedCircle'+ j +'" style="height:80px;width:80px;background-color:#2d353c;font-size:15px;margin:auto;"></div>';
+                completeTable += '</div>';
+                completeTable += '</div>';
+                completeTable += '</div>';
+                
+                // Main content area
+                completeTable += '<div class="row">';
+                
+                // Left side - Customer and Company info
+                completeTable += '<div class="col-md-8">';
+                
+                // Customer section
+                completeTable += '<div class="row mb-3 border-bottom pb-2">';
+                completeTable += '<div class="col-md-12">';
+                completeTable += '<h6 class="text-white-50 mb-1 small">CUSTOMER INFORMATION</h6>';
+                completeTable += '<div class="row">';
+                completeTable += '<div class="col-md-6"><strong class="text-white">Customer Name:</strong> <span class="text-light">' + compeletedResidenceRpt[i].customer_name + '</span></div>';
+                completeTable += '<div class="col-md-6"><strong class="text-white">Nationality:</strong> <span class="text-light">' + compeletedResidenceRpt[i].countryName + '</span></div>';
+                completeTable += '</div>';
+                completeTable += '<div class="row mt-1">';
+                completeTable += '<div class="col-md-12"><strong class="text-white">Residence Type:</strong> <span class="text-light">' + compeletedResidenceRpt[i].country_names + '</span></div>';
+                completeTable += '</div>';
+                completeTable += '</div>';
+                completeTable += '</div>';
+                
+                // Company section
+                completeTable += '<div class="row mb-3 border-bottom pb-2">';
+                completeTable += '<div class="col-md-12">';
+                completeTable += '<h6 class="text-white-50 mb-1 small">COMPANY INFORMATION</h6>';
+                completeTable += '<div class="row">';
+                completeTable += '<div class="col-md-6"><strong class="text-white">Company Name:</strong> <span class="text-light">' + compeletedResidenceRpt[i].company_name + '</span></div>';
+                completeTable += '<div class="col-md-6"><strong class="text-white">Company Number:</strong> <span class="text-light">' + compeletedResidenceRpt[i].company_number + '</span></div>';
+                completeTable += '</div>';
+                completeTable += '</div>';
+                completeTable += '</div>';
+                
+                completeTable += '</div>'; // End left column
+                
+                // Right side - Financial summary
+                completeTable += '<div class="col-md-4 border-start border-dark">';
+                
+                // Financial section
+                completeTable += '<div class="row">';
+                completeTable += '<div class="col-md-12">';
+                completeTable += '<h6 class="text-white-50 mb-1 small">FINANCIAL SUMMARY</h6>';
+                
+                // Sale price - always show this
+                completeTable += '<div class="mb-2"><strong class="text-white">Sale Price:</strong> <span class="text-info">' + numeral(compeletedResidenceRpt[i].sale_price).format('0,0') + ' ' + compeletedResidenceRpt[i].currencyName + '</span></div>';
+                
+                // Add fine information if it exists
                 if(compeletedResidenceRpt[i].total_Fine != 0){
-                  completeTable += 'Total Fine: <span  class="text-info" '+
-                'style="font-size:14px">'+ numeral(compeletedResidenceRpt[i].total_Fine).format('0,0') + ' ' + 
-                compeletedResidenceRpt[i].residenceFineCurrency +'</span> &nbsp;&nbsp; Fine Paid: <span  class="text-info" '+
-                'style="font-size:14px">'+ numeral(compeletedResidenceRpt[i].totalFinePaid).format('0,0') + ' ' + 
-                compeletedResidenceRpt[i].residenceFineCurrency +'</span>';
+                  completeTable += '<div class="mb-2"><strong class="text-white">Total Fine:</strong> <span class="text-info">' + numeral(compeletedResidenceRpt[i].total_Fine).format('0,0') + ' ' + compeletedResidenceRpt[i].residenceFineCurrency + '</span></div>';
+                  completeTable += '<div class="mb-2"><strong class="text-white">Total Fine Paid:</strong> <span class="text-info">' + numeral(compeletedResidenceRpt[i].totalFinePaid).format('0,0') + ' ' + compeletedResidenceRpt[i].residenceFineCurrency + '</span></div>';
                 }
-                completeTable += '</p><p> <a href="residence.php?id='
-                +compeletedResidenceRpt[i].main_residenceID + '&stp='+ compeletedResidenceRpt[i].completedStep + '" '+
-                'class="btn btn-primary" type="button" ><i class="fa fa-eye"></i> View'+
-                '</a></p></div><div class="col-lg-6 d-flex  justify-content-xl-end  justify-content-center "><div class="progress "  id="completedCircle'+ j +'" '+
-                'style="height:auto;width:100px;background-color:#2d353c;font-size:17px; ">'+
-                '</div></div></div><hr class="reportLineBreaker" />';
+                
+                // Total paid - always show this
+                completeTable += '<div class="mb-2"><strong class="text-white">Total Paid:</strong> <span class="text-info">' + numeral(compeletedResidenceRpt[i].total).format('0,0') + ' ' + compeletedResidenceRpt[i].currencyName + '</span></div>';
+                
+                // Calculate total remaining
+                let totalRemaining = parseFloat(compeletedResidenceRpt[i].sale_price) - parseFloat(compeletedResidenceRpt[i].total);
+                
+                // Add fine remaining if currencies match
+                if(compeletedResidenceRpt[i].total_Fine != 0 && compeletedResidenceRpt[i].currencyName === compeletedResidenceRpt[i].residenceFineCurrency) {
+                  totalRemaining += (parseFloat(compeletedResidenceRpt[i].total_Fine) - parseFloat(compeletedResidenceRpt[i].totalFinePaid));
+                }
+                
+                // Total remaining - always show this
+                completeTable += '<div class="mb-2"><strong class="text-white font-weight-bold">Total Remaining:</strong> <span class="text-danger font-weight-bold">' + numeral(totalRemaining).format('0,0') + ' ' + compeletedResidenceRpt[i].currencyName + '</span></div>';
+                
+                // View button
+                completeTable += '<div class="mt-3">';
+                completeTable += '<a href="residence.php?id=' + compeletedResidenceRpt[i].main_residenceID + '&stp=' + compeletedResidenceRpt[i].completedStep + '" class="btn btn-info w-100" type="button"><i class="fa fa-eye"></i> View</a>';
+                completeTable += '</div>';
+
+                completeTable += '</div>';
+                completeTable += '</div>';
+                completeTable += '</div>'; // End right column
+                
+                completeTable += '</div>'; // End main content row
+                
+                completeTable += '</div>'; // End card-body
+                completeTable += '</div>'; // End card
+                
+                completeTable += '</div></div>'; // End col and row
+                completeTable += '<hr class="reportLineBreaker" />';
                 j++;
               }
               completedResidence.append(completeTable);
@@ -1194,6 +1493,8 @@ function updcheckType(){
     function viewFine(id){
       var viewFine = "viewFine";
       $('#viewFineModal').appendTo("body").modal('show');
+      $('#uploadChargesID').val(id); // Store the residence ID for adding new fines
+      
       $.ajax({
         type: "POST",
         url: "residenceReportController.php",  
@@ -1205,47 +1506,113 @@ function updcheckType(){
           var viewFineRpt = JSON.parse(response);
           if(viewFineRpt.length === 0){
             $('#viewFineTable').empty();
-            var finalTable = "<tr><td></td><td></td><td></td><td>Record Not Found</td><td></td><td></td><td></td><td></td></tr>";
+            var finalTable = '<tr><td colspan="8" class="text-center py-4">No fine records found</td></tr>';
             $('#viewFineTable').append(finalTable);
+            
+            // Update the summary section
+            $('#outstandingFineAmount').html('<span class="text-success fw-bold fs-5">No outstanding fines</span>');
           }else{
             $('#viewFineTable').empty();
             var j = 1;
             var finalTable = "";
             for(var i=0; i<viewFineRpt.length; i++){
-              finalTable = "<tr><th scope='row' >"+ j + "</th>";
-              finalTable+="<td style='width:10px'><button type='button' class='btn btn-warning'>Fine</button></td>";
-              finalTable+="<td >"+ numeral(viewFineRpt[i].fineAmount).format('0,0') + ' ' + 
-              viewFineRpt[i].currencyName +"</td><td>"+ viewFineRpt[i].account_Name +"</td>";
-              finalTable+= "<td >"+ viewFineRpt[i].residenceFineDate +"</td><td >"+ viewFineRpt[i].staff_name + "</td>";
+              finalTable = '<tr class="align-middle">';
+              finalTable += '<td class="text-center">'+ j + '</td>';
+              finalTable += '<td><span class="badge bg-warning text-dark">Fine</span></td>';
+              finalTable += '<td>'+ numeral(viewFineRpt[i].fineAmount).format('0,0') + ' ' + 
+                            '<small class="text-primary">' + viewFineRpt[i].currencyName + '</small></td>';
+              finalTable += '<td>'+ viewFineRpt[i].account_Name +'</td>';
+              finalTable += '<td>'+ viewFineRpt[i].residenceFineDate +'</td>';
+              finalTable += '<td>'+ viewFineRpt[i].staff_name + '</td>';
+              
+              // Receipt column with improved styling
               if(viewFineRpt[i].docName == null || viewFineRpt[i].docName == '' ){
-                finalTable += "<td><button type='button' onclick='uploadExraFile("+ viewFineRpt[i].residenceFineID +")' class='btn'><i class='fa fa-upload text-danger fa-2x' aria-hidden='true'></i>"+
-                "</button></td>";
+                finalTable += '<td><button type="button" onclick="uploadExraFile('+ viewFineRpt[i].residenceFineID +')" ' +
+                            'class="btn btn-sm btn-outline-primary"><i class="fa fa-upload me-1"></i>Upload</button></td>';
               }else{
-                finalTable += "<td style='width:110px'><a href='downloadFineDocs.php?id=" + viewFineRpt[i].residenceFineID +"&type=2'><button type='button' class='btn'><i class='fa fa-download text-dark fa-2x' aria-hidden='true'></i>"+
-                "</button></a><button type='button' onclick='deleteFile(" + viewFineRpt[i].residenceFineID +")' class='btn'><i class='fa fa-trash text-danger fa-2x' aria-hidden='true'></i>"+
-                "</button></td>";
+                finalTable += '<td class="text-center">' + 
+                            '<div class="btn-group">' +
+                            '<a href="downloadFineDocs.php?id=' + viewFineRpt[i].residenceFineID +'&type=2" class="btn btn-sm btn-outline-info">' +
+                            '<i class="fa fa-download me-1"></i>Download</a>' +
+                            '<button type="button" onclick="deleteFile(' + viewFineRpt[i].residenceFineID +')" class="btn btn-sm btn-outline-danger">' +
+                            '<i class="fa fa-trash"></i></button>' +
+                            '</div></td>';
               }
-              finalTable += "<td style='width:180px;'>";
-              finalTable += "<button type='button'0 onclick='openExtraCModal(" + viewFineRpt[i].residenceFineID +")'" +
-              "class='btn'><i class='fa fa-edit text-dark fa-2x' aria-hidden='true'></i></button>";
-              finalTable +="<button type='button'0 onclick='DeleteFine(" + viewFineRpt[i].residenceFineID +")'" +
-              "class='btn'><i class='fa fa-trash text-danger fa-2x' aria-hidden='true'></i></button><button type='button'0 "+
-              "onclick='payFine(" + viewFineRpt[i].residenceFineID +")'" +
-              "class='btn'><i class='fa fa-paypal text-success fa-2x' aria-hidden='true'></i></button>";
-              finalTable +="</td>";
-              finalTable += "</tr>";
+              
+              // Actions column with improved styling
+              finalTable += '<td class="text-center">';
+              finalTable += '<div class="btn-group">';
+              finalTable += '<button type="button" onclick="openExtraCModal(' + viewFineRpt[i].residenceFineID +')" ' +
+                          'class="btn btn-sm btn-outline-warning"><i class="fa fa-edit me-1"></i>Edit</button>';
+              finalTable += '<button type="button" onclick="DeleteFine(' + viewFineRpt[i].residenceFineID +')" ' +
+                          'class="btn btn-sm btn-outline-danger"><i class="fa fa-trash me-1"></i>Delete</button>';
+              finalTable += '<button type="button" onclick="payFine(' + viewFineRpt[i].residenceFineID +')" ' +
+                          'class="btn btn-sm btn-outline-success"><i class="fa fa-money me-1"></i>Pay</button>';
+              finalTable += '</div>';
+              finalTable += '</td>';
+              finalTable += '</tr>';
               $('#viewFineTable').append(finalTable);
-              j +=1;
+              j++;
             }
-            // finalTable += "<div id='totalFineArea'><tr><h1>2222222222</h1></tr></div>";
              
+            // Fetch and display the fine total
             getFineTotal(viewFineRpt[0].residenceID);
           }
-          
-            
         },
       });
-
+    }
+    
+    function getFineTotal(id){
+      var getFineTotal = "getFineTotal";
+      $.ajax({
+            type: "POST",
+            url: "residenceReportController.php",  
+            data: {
+              GetFineTotal:getFineTotal,
+              ID:id
+            },
+            success: function (response) {
+              var viewRF = JSON.parse(response);
+              
+              if (viewRF.length === 0) {
+                // If no data, show no outstanding fines
+                $('#outstandingFineAmount').html('<span class="text-success fw-bold fs-5">No outstanding fines</span>');
+                return;
+              }
+              
+              // Create a nicely formatted display of outstanding fines
+              var totalHtml = '';
+              for(var i = 0; i < viewRF.length; i++){
+                var badgeClass = parseFloat(viewRF[i].RF) > 0 ? 'text-danger' : 'text-success';
+                var badgeText = parseFloat(viewRF[i].RF) > 0 ? 'Outstanding' : 'Paid';
+                
+                totalHtml += '<div class="d-flex justify-content-between align-items-center">';
+                totalHtml += '<span class="fs-5 fw-bold ' + badgeClass + '">' + numeral(viewRF[i].RF).format('0,0') + ' ' + viewRF[i].currencyName + '</span>';
+                totalHtml += '<span class="badge bg-' + (parseFloat(viewRF[i].RF) > 0 ? 'danger' : 'success') + '">' + badgeText + '</span>';
+                totalHtml += '</div>';
+                
+                if (i < viewRF.length - 1) {
+                  totalHtml += '<hr class="my-2">';
+                }
+              }
+              
+              $('#outstandingFineAmount').html(totalHtml);
+              
+              // Also append to the table
+              var table = "";
+              table += '<tr class="bg-light">';
+              table += '<td colspan="6" class="text-end fw-bold">Outstanding Fine Balance:</td>';
+              table += '<td colspan="2" class="fw-bold">';
+              
+              for(var i = 0; i < viewRF.length; i++){
+                var textClass = parseFloat(viewRF[i].RF) > 0 ? 'text-danger' : 'text-success';
+                table += '<div class="' + textClass + '">' + numeral(viewRF[i].RF).format('0,0') + ' ' + viewRF[i].currencyName + '</div>';
+              }
+              
+              table += '</td></tr>';
+              $('#viewFineTable').append(table);
+            },
+        });
     }
     function uploadExraFile(id){
       $('#uploadChargesID').val(id);
@@ -1504,32 +1871,6 @@ function updcheckType(){
             },
         });
     }
-    function getFineTotal(id){
-      var getFineTotal = "getFineTotal";
-      $.ajax({
-            type: "POST",
-            url: "residenceReportController.php",  
-            data: {
-              GetFineTotal:getFineTotal,
-              ID:id
-            },
-            success: function (response) {
-              var viewRF = JSON.parse(response);
-              var table = "";
-              table += '<tr><td></td><td></td><td></td><td></td><td></td><td></td><td style="font-size:14px; font-weight:bold">Outstaning Fine Balance:</td>';
-              for(var i = 0; i<viewRF.length; i++){
-                if(i == 0){
-                  table += '<td style="font-size:14px; font-weight:bold">'+  numeral(viewRF[i].RF).format('0,0') + ' ' + viewRF[i].currencyName +'</td></tr>';
-                }else{
-                  table +='<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style="font-size:14px; font-weight:bold">'+ numeral(viewRF[i].RF).format('0,0') + ' ' + viewRF[i].currencyName +'</td></tr>';
-                }
-                
-              }
-              $('#viewFineTable').append(table);
-            },
-        });
-
-    }
     function showTotalFineView(){
       var labelArr = [];
       var dataArr = [];
@@ -1552,6 +1893,7 @@ function updcheckType(){
       
       
     }
+    
     function drawPendingResidencePayment(labelInp,dataInp){
       const data = {
           labels: labelInp ,
@@ -2021,26 +2363,38 @@ function updcheckType(){
             $('#outstanding_balance').text(numeral(remaining).format('0,0') + ' ' + currencyLabel);
     }
     function printLedger(){
-      //printJS({ printable: 'printThisArea', type: 'html', style: '.table th { background-color: #dc3545 !important;color: white; }.table-striped tbody tr:nth-of-type(odd) td {background-color: rgba(0, 0, 0, .05)!important;}.table tbody tr td.customAbc {background-color: grey !important;color: white;} .col-sm-1, .col-sm-2, .col-sm-3, .col-sm-4, .col-sm-5, .col-sm-6,.col-sm-7, .col-sm-8, .col-sm-9, .col-sm-10, .col-sm-11, .col-sm-12 {float: left;} .col-sm-12 {width: 100%;} .col-sm-11 {width: 91.66666666666666%;} .col-sm-10 {width: 83.33333333333334%;} .col-sm-9 {width: 75%;} .col-sm-8 {width: 66.66666666666666%;} .col-sm-7 {width: 58.333333333333336%;}.col-sm-6 {width: 50%;} .col-sm-5 {width: 41.66666666666667%;} .col-sm-4 {width: 33.33333333333333%;} .col-sm-3 {width: 25%;} .col-sm-2 {width: 16.666666666666664%;} .col-sm-1 {width: 8.333333333333332%;}' })
+      // Get the current row data
+      var currentRow = $('#myTable').DataTable().row('.selected').data();
+      if (!currentRow) {
+        alert('Please select a receipt to print');
+        return;
+      }
+      
+      // Create filename with passenger name, amount and invoice number
+      var passengerName = currentRow[2].replace(/ /g, '_'); // Replace spaces with underscores
+      var amount = parseFloat(currentRow[4]).toFixed(2);
+      var invoiceNumber = currentRow[1];
+      var fileName = passengerName + '_' + amount + '_' + invoiceNumber;
+      
       printJS({ 
           printable: 'printThisArea', 
           type: 'html', 
-        
-              css: [
-                  'bootstrap-4.3.1-dist/css/bootstrap.min.css',
-                  'customBootstrap.css',
-                  'https://fonts.googleapis.com/css?family=Arizonia',
-                  'https://fonts.googleapis.com/css2?family=Montserrat:ital@1&display=swap',
-              ],
-              targetStyles: ['*'],
-              onLoadingStart: ()=>{
-                $('#myTable').removeClass('table-dark');
-                $('#myTable').addClass('table-striped');
-              },
-              onLoadingEnd: () => {
-                $('#myTable').addClass('table-dark');
-                $('#myTable').removeClass('table-striped');
-              },
+          documentTitle: fileName,
+          css: [
+              'bootstrap-4.3.1-dist/css/bootstrap.min.css',
+              'customBootstrap.css',
+              'https://fonts.googleapis.com/css?family=Arizonia',
+              'https://fonts.googleapis.com/css2?family=Montserrat:ital@1&display=swap',
+          ],
+          targetStyles: ['*'],
+          onLoadingStart: ()=>{
+            $('#myTable').removeClass('table-dark');
+            $('#myTable').addClass('table-striped');
+          },
+          onLoadingEnd: () => {
+            $('#myTable').addClass('table-dark');
+            $('#myTable').removeClass('table-striped');
+          },
       })
     }
 
@@ -2103,209 +2457,386 @@ function updcheckType(){
     });
 
     function generateReceipt(paymentID) {
-        $.ajax({
-            type: "POST",
-            url: "../../controller/customer/customer_receipt/generatePaymentReceipt.php",
-            data: {
-                GeneratePaymentReceipt: "GeneratePaymentReceipt",
-                PaymentID: paymentID
-            },
-            success: function(response) {
-                var data = JSON.parse(response);
-                if (data.message.includes("Success")) {
-                    var getResponseStr = data.message.split("&");
-                    var generatedID = getResponseStr[1];
-                    window.open('/receipt/?id=' + generatedID + '&hash=' + md5(generatedID + "::::::" + generatedID), '_blank');
-                } else {
-                    notify('Error!', data.error, 'error');
-                }
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                var response = JSON.parse(jqXHR.responseText);
-                notify('Error!', response.error, 'error');
+      // Disable the button to prevent double-clicks
+      $(`button[onclick="generateReceipt(${paymentID})"]`).attr("disabled", true);
+      
+      $.ajax({
+        type: "POST",
+        url: "residenceReportController.php",
+        data: {
+          GenerateReceipt: true,
+          PaymentID: paymentID
+        },
+        success: function(response) {
+          var data = JSON.parse(response);
+          if (data.message === "Success") {
+            notify('Success!', 'Receipt generated successfully', 'success');
+            // Generate the receipt link for printing and downloading
+            const receiptHash = md5(data.receiptID + "::::::" + data.receiptID);
+            const baseReceiptUrl = `/receipt/?id=${data.receiptID}&hash=${receiptHash}`;
+            
+            // Replace the generate button with print and download buttons
+            let buttonsHtml = `
+              <a href="${baseReceiptUrl}" target="_blank" class="btn btn-sm btn-info mr-1" style="margin-right: 5px;">
+                <i class="fa fa-print"></i> Print
+              </a>
+              <a href="${baseReceiptUrl}&download=true" target="_blank" class="btn btn-sm btn-success">
+                <i class="fa fa-download"></i> Download
+              </a>`;
+            
+            $(`button[onclick="generateReceipt(${paymentID})"]`).parent().html(buttonsHtml);
+          } else {
+            notify('Error!', data.error || 'Failed to generate receipt', 'error');
+            $(`button[onclick="generateReceipt(${paymentID})"]`).attr("disabled", false);
+          }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          notify('Error!', 'Failed to generate receipt', 'error');
+          $(`button[onclick="generateReceipt(${paymentID})"]`).attr("disabled", false);
+        }
+      });
+    }
+
+    function redirectToReceiptDetails(receiptID) {
+        window.location.href = '../receipt/receiptDetails.php?rcptID=' + receiptID;
+    }
+
+    function uploadFile(receiptID) {
+        // Set the receipt ID in the uploader form
+        $('#FileID').val(receiptID);
+        // Show the uploader modal
+        $('#uploaderModal').modal('show');
+    }
+
+    function downloadPaymentReceipt(id) {
+        // Get the current row data
+        var currentRow = $('#myTable').DataTable().row('.selected').data();
+        if (!currentRow) {
+            alert('Please select a receipt to download');
+            return;
+        }
+        
+        // Create filename with passenger name, amount and invoice number
+        var passengerName = currentRow[2].replace(/ /g, '_'); // Replace spaces with underscores
+        var amount = parseFloat(currentRow[4]).toFixed(2);
+        var invoiceNumber = currentRow[1];
+        
+        // Add the filename parameters to the URL
+        window.location.href = '../../../controller/residence/residence_receipt/downloadPaymentReceipt.php?id=' + id + 
+                             '&passenger=' + encodeURIComponent(passengerName) + 
+                             '&amount=' + encodeURIComponent(amount) + 
+                             '&invoice=' + encodeURIComponent(invoiceNumber);
+    }
+
+    function deletePaymentReceiptFile(id) {
+        $.confirm({
+            title: 'Delete!',
+            content: 'Do you want to delete this receipt file?',
+            type: 'red',
+            typeAnimated: true,
+            buttons: {
+                tryAgain: {
+                    text: 'Yes',
+                    btnClass: 'btn-red',
+                    action: function() {
+                        $.ajax({
+                            type: "POST",
+                            url: "../../../controller/residence/residence_receipt/deleteResidenceReceipt.php",
+                            data: {
+                                deletePaymentReceiptFile: "deletePaymentReceiptFile",
+                                ID: id,
+                            },
+                            success: function(response) {
+                                var data = JSON.parse(response);
+                                if (data.message == 'Success') {
+                                    notify('Success!', 'Receipt file deleted successfully', 'success');
+                                    // Refresh the payment data to update UI
+                                    loadPaymentData(); // Make sure you have this function to refresh your data
+                                } else {
+                                    notify('Oops!', data.error || 'Failed to delete receipt file', 'error');
+                                }
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                var response = JSON.parse(jqXHR.responseText);
+                                notify('Error!', response.error, 'error');
+                            }
+                        });
+                    }
+                },
+                close: function() {}
             }
         });
     }
 
     // Add MD5 function if not already present
     function md5(string) {
-      function RotateLeft(lValue, iShiftBits) {
-        return (lValue<<iShiftBits) | (lValue>>>(32-iShiftBits));
+      function rotateLeft(lValue, iShiftBits) {
+        return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
       }
-      function AddUnsigned(lX,lY) {
-        var lX4,lY4,lX8,lY8,lResult;
+      
+      function addUnsigned(lX, lY) {
+        var lX4, lY4, lX8, lY8, lResult;
         lX8 = (lX & 0x80000000);
         lY8 = (lY & 0x80000000);
         lX4 = (lX & 0x40000000);
         lY4 = (lY & 0x40000000);
-        lResult = (lX & 0x3FFFFFFF)+(lY & 0x3FFFFFFF);
-        if (lX4 & lY4) {
-          return (lResult ^ 0x80000000 ^ lX8 ^ lY8);
-        }
+        lResult = (lX & 0x3FFFFFFF) + (lY & 0x3FFFFFFF);
+        if (lX4 & lY4) return (lResult ^ 0x80000000 ^ lX8 ^ lY8);
         if (lX4 | lY4) {
-          if (lResult & 0x40000000) {
-            return (lResult ^ 0xC0000000 ^ lX8 ^ lY8);
-          } else {
-            return (lResult ^ 0x40000000 ^ lX8 ^ lY8);
-          }
+          if (lResult & 0x40000000) return (lResult ^ 0xC0000000 ^ lX8 ^ lY8);
+          else return (lResult ^ 0x40000000 ^ lX8 ^ lY8);
         } else {
           return (lResult ^ lX8 ^ lY8);
         }
       }
-      function F(x,y,z) { return (x & y) | ((~x) & z); }
-      function G(x,y,z) { return (x & z) | (y & (~z)); }
-      function H(x,y,z) { return (x ^ y ^ z); }
-      function I(x,y,z) { return (y ^ (x | (~z))); }
-      function FF(a,b,c,d,x,s,ac) {
-        a = AddUnsigned(a, AddUnsigned(AddUnsigned(F(b, c, d), x), ac));
-        return AddUnsigned(RotateLeft(a, s), b);
+      
+      function F(x, y, z) { return (x & y) | ((~x) & z); }
+      function G(x, y, z) { return (x & z) | (y & (~z)); }
+      function H(x, y, z) { return (x ^ y ^ z); }
+      function I(x, y, z) { return (y ^ (x | (~z))); }
+      
+      function FF(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(F(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
       }
-      function GG(a,b,c,d,x,s,ac) {
-        a = AddUnsigned(a, AddUnsigned(AddUnsigned(G(b, c, d), x), ac));
-        return AddUnsigned(RotateLeft(a, s), b);
+      
+      function GG(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(G(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
       }
-      function HH(a,b,c,d,x,s,ac) {
-        a = AddUnsigned(a, AddUnsigned(AddUnsigned(H(b, c, d), x), ac));
-        return AddUnsigned(RotateLeft(a, s), b);
+      
+      function HH(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(H(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
       }
-      function II(a,b,c,d,x,s,ac) {
-        a = AddUnsigned(a, AddUnsigned(AddUnsigned(I(b, c, d), x), ac));
-        return AddUnsigned(RotateLeft(a, s), b);
+      
+      function II(a, b, c, d, x, s, ac) {
+        a = addUnsigned(a, addUnsigned(addUnsigned(I(b, c, d), x), ac));
+        return addUnsigned(rotateLeft(a, s), b);
       }
-      function ConvertToWordArray(string) {
+      
+      function convertToWordArray(string) {
         var lWordCount;
         var lMessageLength = string.length;
-        var lNumberOfWords_temp1=lMessageLength + 8;
-        var lNumberOfWords_temp2=(lNumberOfWords_temp1-(lNumberOfWords_temp1 % 64))/64;
-        var lNumberOfWords = (lNumberOfWords_temp2+1)*16;
-        var lWordArray=Array(lNumberOfWords-1);
+        var lNumberOfWords_temp1 = lMessageLength + 8;
+        var lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64;
+        var lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16;
+        var lWordArray = Array(lNumberOfWords - 1);
         var lBytePosition = 0;
         var lByteCount = 0;
-        while ( lByteCount < lMessageLength ) {
-          lWordCount = (lByteCount-(lByteCount % 4))/4;
-          lBytePosition = (lByteCount % 4)*8;
-          lWordArray[lWordCount] = (lWordArray[lWordCount] | (string.charCodeAt(lByteCount)<<lBytePosition));
+        while (lByteCount < lMessageLength) {
+          lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+          lBytePosition = (lByteCount % 4) * 8;
+          lWordArray[lWordCount] = (lWordArray[lWordCount] | (string.charCodeAt(lByteCount) << lBytePosition));
           lByteCount++;
         }
-        lWordCount = (lByteCount-(lByteCount % 4))/4;
-        lBytePosition = (lByteCount % 4)*8;
-        lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80<<lBytePosition);
-        lWordArray[lNumberOfWords-2] = lMessageLength<<3;
-        lWordArray[lNumberOfWords-1] = lMessageLength>>>29;
+        lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+        lBytePosition = (lByteCount % 4) * 8;
+        lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition);
+        lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
+        lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
         return lWordArray;
       }
-      function WordToHex(lValue) {
-        var WordToHexValue="",WordToHexValue_temp="",lByte,lCount;
-        for (lCount = 0;lCount<=3;lCount++) {
-          lByte = (lValue>>>(lCount*8)) & 255;
-          WordToHexValue_temp = "0" + lByte.toString(16);
-          WordToHexValue = WordToHexValue + WordToHexValue_temp.substr(WordToHexValue_temp.length-2,2);
+      
+      function wordToHex(lValue) {
+        var wordToHexValue = "",
+          wordToHexValue_temp = "",
+          lByte, lCount;
+        for (lCount = 0; lCount <= 3; lCount++) {
+          lByte = (lValue >>> (lCount * 8)) & 255;
+          wordToHexValue_temp = "0" + lByte.toString(16);
+          wordToHexValue = wordToHexValue + wordToHexValue_temp.substr(wordToHexValue_temp.length - 2, 2);
         }
-        return WordToHexValue;
+        return wordToHexValue;
       }
-      function Utf8Encode(string) {
-        string = string.replace(/\r\n/g,"\n");
-        var utftext = "";
-        for (var n = 0; n < string.length; n++) {
-          var c = string.charCodeAt(n);
-          if (c < 128) {
-            utftext += String.fromCharCode(c);
-          }
-          else if((c > 127) && (c < 2048)) {
-            utftext += String.fromCharCode((c >> 6) | 192);
-            utftext += String.fromCharCode((c & 63) | 128);
-          }
-          else {
-            utftext += String.fromCharCode((c >> 12) | 224);
-            utftext += String.fromCharCode(((c >> 6) & 63) | 128);
-            utftext += String.fromCharCode((c & 63) | 128);
-          }
-        }
-        return utftext;
+      
+      var x = Array();
+      var k, AA, BB, CC, DD, a, b, c, d
+      var S11 = 7,
+        S12 = 12,
+        S13 = 17,
+        S14 = 22;
+      var S21 = 5,
+        S22 = 9,
+        S23 = 14,
+        S24 = 20;
+      var S31 = 4,
+        S32 = 11,
+        S33 = 16,
+        S34 = 23;
+      var S41 = 6,
+        S42 = 10,
+        S43 = 15,
+        S44 = 21;
+      
+      string = string.toString();
+      x = convertToWordArray(string);
+      a = 0x67452301;
+      b = 0xEFCDAB89;
+      c = 0x98BADCFE;
+      d = 0x10325476;
+      
+      for (k = 0; k < x.length; k += 16) {
+        AA = a;
+        BB = b;
+        CC = c;
+        DD = d;
+        a = FF(a, b, c, d, x[k + 0], S11, 0xD76AA478);
+        d = FF(d, a, b, c, x[k + 1], S12, 0xE8C7B756);
+        c = FF(c, d, a, b, x[k + 2], S13, 0x242070DB);
+        b = FF(b, c, d, a, x[k + 3], S14, 0xC1BDCEEE);
+        a = FF(a, b, c, d, x[k + 4], S11, 0xF57C0FAF);
+        d = FF(d, a, b, c, x[k + 5], S12, 0x4787C62A);
+        c = FF(c, d, a, b, x[k + 6], S13, 0xA8304613);
+        b = FF(b, c, d, a, x[k + 7], S14, 0xFD469501);
+        a = FF(a, b, c, d, x[k + 8], S11, 0x698098D8);
+        d = FF(d, a, b, c, x[k + 9], S12, 0x8B44F7AF);
+        c = FF(c, d, a, b, x[k + 10], S13, 0xFFFF5BB1);
+        b = FF(b, c, d, a, x[k + 11], S14, 0x895CD7BE);
+        a = FF(a, b, c, d, x[k + 12], S11, 0x6B901122);
+        d = FF(d, a, b, c, x[k + 13], S12, 0xFD987193);
+        c = FF(c, d, a, b, x[k + 14], S13, 0xA679438E);
+        b = FF(b, c, d, a, x[k + 15], S14, 0x49B40821);
+        a = GG(a, b, c, d, x[k + 1], S21, 0xF61E2562);
+        d = GG(d, a, b, c, x[k + 6], S22, 0xC040B340);
+        c = GG(c, d, a, b, x[k + 11], S23, 0x265E5A51);
+        b = GG(b, c, d, a, x[k + 0], S24, 0xE9B6C7AA);
+        a = GG(a, b, c, d, x[k + 5], S21, 0xD62F105D);
+        d = GG(d, a, b, c, x[k + 10], S22, 0x2441453);
+        c = GG(c, d, a, b, x[k + 15], S23, 0xD8A1E681);
+        b = GG(b, c, d, a, x[k + 4], S24, 0xE7D3FBC8);
+        a = GG(a, b, c, d, x[k + 9], S21, 0x21E1CDE6);
+        d = GG(d, a, b, c, x[k + 14], S22, 0xC33707D6);
+        c = GG(c, d, a, b, x[k + 3], S23, 0xF4D50D87);
+        b = GG(b, c, d, a, x[k + 8], S24, 0x455A14ED);
+        a = GG(a, b, c, d, x[k + 13], S21, 0xA9E3E905);
+        d = GG(d, a, b, c, x[k + 2], S22, 0xFCEFA3F8);
+        c = GG(c, d, a, b, x[k + 7], S23, 0x676F02D9);
+        b = GG(b, c, d, a, x[k + 12], S24, 0x8D2A4C8A);
+        a = HH(a, b, c, d, x[k + 5], S31, 0xFFFA3942);
+        d = HH(d, a, b, c, x[k + 8], S32, 0x8771F681);
+        c = HH(c, d, a, b, x[k + 11], S33, 0x6D9D6122);
+        b = HH(b, c, d, a, x[k + 14], S34, 0xFDE5380C);
+        a = HH(a, b, c, d, x[k + 1], S31, 0xA4BEEA44);
+        d = HH(d, a, b, c, x[k + 4], S32, 0x4BDECFA9);
+        c = HH(c, d, a, b, x[k + 7], S33, 0xF6BB4B60);
+        b = HH(b, c, d, a, x[k + 10], S34, 0xBEBFBC70);
+        a = HH(a, b, c, d, x[k + 13], S31, 0x289B7EC6);
+        d = HH(d, a, b, c, x[k + 0], S32, 0xEAA127FA);
+        c = HH(c, d, a, b, x[k + 3], S33, 0xD4EF3085);
+        b = HH(b, c, d, a, x[k + 6], S34, 0x4881D05);
+        a = HH(a, b, c, d, x[k + 9], S31, 0xD9D4D039);
+        d = HH(d, a, b, c, x[k + 12], S32, 0xE6DB99E5);
+        c = HH(c, d, a, b, x[k + 15], S33, 0x1FA27CF8);
+        b = HH(b, c, d, a, x[k + 2], S34, 0xC4AC5665);
+        a = II(a, b, c, d, x[k + 0], S41, 0xF4292244);
+        d = II(d, a, b, c, x[k + 7], S42, 0x432AFF97);
+        c = II(c, d, a, b, x[k + 14], S43, 0xAB9423A7);
+        b = II(b, c, d, a, x[k + 5], S44, 0xFC93A039);
+        a = II(a, b, c, d, x[k + 12], S41, 0x655B59C3);
+        d = II(d, a, b, c, x[k + 3], S42, 0x8F0CCC92);
+        c = II(c, d, a, b, x[k + 10], S43, 0xFFEFF47D);
+        b = II(b, c, d, a, x[k + 1], S44, 0x85845DD1);
+        a = II(a, b, c, d, x[k + 8], S41, 0x6FA87E4F);
+        d = II(d, a, b, c, x[k + 15], S42, 0xFE2CE6E0);
+        c = II(c, d, a, b, x[k + 6], S43, 0xA3014314);
+        b = II(b, c, d, a, x[k + 13], S44, 0x4E0811A1);
+        a = II(a, b, c, d, x[k + 4], S41, 0xF7537E82);
+        d = II(d, a, b, c, x[k + 11], S42, 0xBD3AF235);
+        c = II(c, d, a, b, x[k + 2], S43, 0x2AD7D2BB);
+        b = II(b, c, d, a, x[k + 9], S44, 0xEB86D391);
+        a = addUnsigned(a, AA);
+        b = addUnsigned(b, BB);
+        c = addUnsigned(c, CC);
+        d = addUnsigned(d, DD);
       }
-      var x=Array();
-      var k,AA,BB,CC,DD,a,b,c,d;
-      var S11=7, S12=12, S13=17, S14=22;
-      var S21=5, S22=9 , S23=14, S24=20;
-      var S31=4, S32=11, S33=16, S34=23;
-      var S41=6, S42=10, S43=15, S44=21;
-      string = Utf8Encode(string);
-      x = ConvertToWordArray(string);
-      a = 0x67452301; b = 0xEFCDAB89; c = 0x98BADCFE; d = 0x10325476;
-      for (k=0;k<x.length;k+=16) {
-        AA=a; BB=b; CC=c; DD=d;
-        a=FF(a,b,c,d,x[k+0], S11,0xD76AA478);
-        d=FF(d,a,b,c,x[k+1], S12,0xE8C7B756);
-        c=FF(c,d,a,b,x[k+2], S13,0x242070DB);
-        b=FF(b,c,d,a,x[k+3], S14,0xC1BDCEEE);
-        a=FF(a,b,c,d,x[k+4], S11,0xF57C0FAF);
-        d=FF(d,a,b,c,x[k+5], S12,0x4787C62A);
-        c=FF(c,d,a,b,x[k+6], S13,0xA8304613);
-        b=FF(b,c,d,a,x[k+7], S14,0xFD469501);
-        a=FF(a,b,c,d,x[k+8], S11,0x698098D8);
-        d=FF(d,a,b,c,x[k+9], S12,0x8B44F7AF);
-        c=FF(c,d,a,b,x[k+10],S13,0xFFFF5BB1);
-        b=FF(b,c,d,a,x[k+11],S14,0x895CD7BE);
-        a=FF(a,b,c,d,x[k+12],S11,0x6B901122);
-        d=FF(d,a,b,c,x[k+13],S12,0xFD987193);
-        c=FF(c,d,a,b,x[k+14],S13,0xA679438E);
-        b=FF(b,c,d,a,x[k+15],S14,0x49B40821);
-        a=GG(a,b,c,d,x[k+1], S21,0xF61E2562);
-        d=GG(d,a,b,c,x[k+6], S22,0xC040B340);
-        c=GG(c,d,a,b,x[k+11],S23,0x265E5A51);
-        b=GG(b,c,d,a,x[k+0], S24,0xE9B6C7AA);
-        a=GG(a,b,c,d,x[k+5], S21,0xD62F105D);
-        d=GG(d,a,b,c,x[k+10],S22,0x2441453);
-        c=GG(c,d,a,b,x[k+15],S23,0xD8A1E681);
-        b=GG(b,c,d,a,x[k+4], S24,0xE7D3FBC8);
-        a=GG(a,b,c,d,x[k+9], S21,0x21E1CDE6);
-        d=GG(d,a,b,c,x[k+14],S22,0xC33707D6);
-        c=GG(c,d,a,b,x[k+3], S23,0xF4D50D87);
-        b=GG(b,c,d,a,x[k+8], S24,0x455A14ED);
-        a=GG(a,b,c,d,x[k+13],S21,0xA9E3E905);
-        d=GG(d,a,b,c,x[k+2], S22,0xFCEFA3F8);
-        c=GG(c,d,a,b,x[k+7], S23,0x676F02D9);
-        b=GG(b,c,d,a,x[k+12],S24,0x8D2A4C8A);
-        a=HH(a,b,c,d,x[k+5], S31,0xFFFA3942);
-        d=HH(d,a,b,c,x[k+8], S32,0x8771F681);
-        c=HH(c,d,a,b,x[k+11],S33,0x6D9D6122);
-        b=HH(b,c,d,a,x[k+14],S34,0xFDE5380C);
-        a=HH(a,b,c,d,x[k+1], S31,0xA4BEEA44);
-        d=HH(d,a,b,c,x[k+4], S32,0x4BDECFA9);
-        c=HH(c,d,a,b,x[k+7], S33,0xF6BB4B60);
-        b=HH(b,c,d,a,x[k+10],S34,0xBEBFBC70);
-        a=HH(a,b,c,d,x[k+13],S31,0x289B7EC6);
-        d=HH(d,a,b,c,x[k+0], S32,0xEAA127FA);
-        c=HH(c,d,a,b,x[k+3], S33,0xD4EF3085);
-        b=HH(b,c,d,a,x[k+6], S34,0x4881D05);
-        a=HH(a,b,c,d,x[k+9], S31,0xD9D4D039);
-        d=HH(d,a,b,c,x[k+12],S32,0xE6DB99E5);
-        c=HH(c,d,a,b,x[k+15],S33,0x1FA27CF8);
-        b=HH(b,c,d,a,x[k+2], S34,0xC4AC5665);
-        a=II(a,b,c,d,x[k+0], S41,0xF4292244);
-        d=II(d,a,b,c,x[k+7], S42,0x432AFF97);
-        c=II(c,d,a,b,x[k+14],S43,0xAB9423A7);
-        b=II(b,c,d,a,x[k+5], S44,0xFC93A039);
-        a=II(a,b,c,d,x[k+12],S41,0x655B59C3);
-        d=II(d,a,b,c,x[k+3], S42,0x8F0CCC92);
-        c=II(c,d,a,b,x[k+10],S43,0xFFEFF47D);
-        b=II(b,c,d,a,x[k+1], S44,0x85845DD1);
-        a=II(a,b,c,d,x[k+8], S41,0x6FA87E4F);
-        d=II(d,a,b,c,x[k+15],S42,0xFE2CE6E0);
-        c=II(c,d,a,b,x[k+6], S43,0xA3014314);
-        b=II(b,c,d,a,x[k+13],S44,0x4E0811A1);
-        a=II(a,b,c,d,x[k+4], S41,0xF7537E82);
-        d=II(d,a,b,c,x[k+11],S42,0xBD3AF235);
-        c=II(c,d,a,b,x[k+2], S43,0x2AD7D2BB);
-        b=II(b,c,d,a,x[k+9], S44,0xEB86D391);
-        a=AddUnsigned(a,AA);
-        b=AddUnsigned(b,BB);
-        c=AddUnsigned(c,CC);
-        d=AddUnsigned(d,DD);
-      }
-      var temp = WordToHex(a)+WordToHex(b)+WordToHex(c)+WordToHex(d);
+      
+      var temp = wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d);
       return temp.toLowerCase();
     }
+
+    // Added for Salary Certificate functionality
+    function openSalaryCertificateDialog(id){
+      $('#salaryCertResidenceID').val(id);
+      $('#bankSelectorModal').modal('show');
+      
+      // Try-catch block to handle potential errors with loadBanks
+      try {
+        loadBanks();
+      } catch (e) {
+        console.error("Error loading banks:", e);
+        notify('Error!', 'Could not load banks, but you can still proceed.', 'warning');
+      }
+    }
+    
+    function loadBanks(){
+      var getBanks = "getBanks";
+      $.ajax({
+        type: "POST",
+        url: "residenceReportController.php",  
+        data: {
+          GetBanks: getBanks
+        },
+        success: function (response) {
+          try {
+            var banks = JSON.parse(response);
+            var bankSelect = $('#bankSelector');
+            bankSelect.empty();
+            bankSelect.append('<option value="">-- Select Bank --</option>');
+            
+            if (banks && banks.length > 0) {
+              for(var i = 0; i < banks.length; i++){
+                bankSelect.append('<option value="' + banks[i].id + '">' + banks[i].bank_name + '</option>');
+              }
+            } else {
+              bankSelect.append('<option value="default">Default Bank</option>');
+            }
+          } catch (e) {
+            console.error("Error processing banks:", e);
+            $('#bankSelector').empty().append('<option value="">-- No Banks Available --</option>');
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error("AJAX error loading banks:", status, error);
+          $('#bankSelector').empty().append('<option value="">-- Could Not Load Banks --</option>');
+        }
+      });
+    }
+    
+    function generateSalaryCertificate(){
+      var bankId = $('#bankSelector').val();
+      if (!bankId) bankId = "default"; // Fallback value
+      
+      var residenceId = $('#salaryCertResidenceID').val();
+      
+      window.open('printLetter.php?id=' + residenceId + '&type=salary_certificate&bank_id=' + bankId, '_blank');
+      $('#bankSelectorModal').modal('hide');
+    }
 </script>
+
+<!-- Bank Selector Modal for Salary Certificate -->
+<div class="modal fade" id="bankSelectorModal" tabindex="-1" role="dialog" aria-labelledby="bankSelectorModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title" id="bankSelectorModalLabel">Select Bank for Salary Certificate</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="salaryCertResidenceID">
+        <div class="form-group">
+          <label for="bankSelector">Bank:</label>
+          <select class="form-control" id="bankSelector">
+            <option value="">-- Select Bank --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="generateSalaryCertificate()">Generate Certificate</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -168,6 +168,90 @@
         $supplier = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
         // encoding array to json format
         echo json_encode($supplier);
+    }else if(isset($_POST['GenerateReceipt'])){
+        try {
+            // Begin transaction
+            $pdo->beginTransaction();
+            
+            // Get payment details
+            $paymentID = $_POST['PaymentID'];
+            $query = $pdo->prepare("SELECT cp.pay_id, cp.customer_id, cp.payment_amount, cp.datetime, 
+                                    cp.currencyID, cp.staff_id, cp.accountID, cp.PaymentFor, cp.remarks,
+                                    c.customer_name, c.customer_email, c.customer_phone,
+                                    cr.currencyName, a.account_Name, s.staff_name
+                                    FROM customer_payments cp
+                                    INNER JOIN customer c ON c.customer_id = cp.customer_id
+                                    INNER JOIN currency cr ON cr.currencyID = cp.currencyID
+                                    INNER JOIN accounts a ON a.account_ID = cp.accountID
+                                    INNER JOIN staff s ON s.staff_id = cp.staff_id
+                                    WHERE cp.pay_id = :paymentID");
+            $query->bindParam(':paymentID', $paymentID);
+            $query->execute();
+            $payment = $query->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$payment) {
+                // Payment not found
+                echo json_encode(['message' => 'Error', 'error' => 'Payment not found']);
+                exit;
+            }
+            
+            // Generate invoice number
+            $year = date('Y');
+            $month = date('m');
+            $day = date('d');
+            
+            // Get max invoice number
+            $invQuery = $pdo->prepare("SELECT MAX(CAST(SUBSTRING(invoiceNumber, 12) AS UNSIGNED)) as max_num FROM invoice 
+                                       WHERE invoiceNumber LIKE :prefix");
+            $prefix = "INV-$year$month$day-%";
+            $invQuery->bindParam(':prefix', $prefix);
+            $invQuery->execute();
+            $result = $invQuery->fetch(PDO::FETCH_ASSOC);
+            
+            $nextNum = 1;
+            if ($result && $result['max_num']) {
+                $nextNum = $result['max_num'] + 1;
+            }
+            
+            $invoiceNumber = "INV-$year$month$day-$nextNum";
+            
+            // Insert into invoice table
+            $insertInvoice = $pdo->prepare("INSERT INTO invoice (customerID, invoiceNumber, invoiceCurrency) 
+                                           VALUES (:customerID, :invoiceNumber, :invoiceCurrency)");
+            
+            $insertInvoice->bindParam(':customerID', $payment['customer_id']);
+            $insertInvoice->bindParam(':invoiceNumber', $invoiceNumber);
+            $insertInvoice->bindParam(':invoiceCurrency', $payment['currencyID']);
+            $insertInvoice->execute();
+            
+            // Get the invoice ID
+            $invoiceID = $pdo->lastInsertId();
+            
+            // Insert into invoicedetails
+            $transactionType = "Payment";
+            $insertInvoiceDetails = $pdo->prepare("INSERT INTO invoicedetails (invoiceID, transactionID, transactionType) 
+                                                 VALUES (:invoiceID, :transactionID, :transactionType)");
+            
+            $insertInvoiceDetails->bindParam(':invoiceID', $invoiceID);
+            $insertInvoiceDetails->bindParam(':transactionID', $payment['pay_id']);
+            $insertInvoiceDetails->bindParam(':transactionType', $transactionType);
+            $insertInvoiceDetails->execute();
+            
+            // Commit transaction
+            $pdo->commit();
+            
+            // Success response
+            echo json_encode(['message' => 'Success', 'receiptID' => $invoiceID]);
+        } catch (PDOException $e) {
+            // Roll back if there's an error
+            $pdo->rollBack();
+            error_log("Database error: " . $e->getMessage());
+            echo json_encode(['message' => 'Error', 'error' => 'Database error: ' . $e->getMessage()]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            error_log("General error: " . $e->getMessage());
+            echo json_encode(['message' => 'Error', 'error' => 'Error: ' . $e->getMessage()]);
+        }
     }else if(isset($_POST['GetPendingResidencePayment'])){
         $selectQuery = $pdo->prepare("SELECT sale_price - IFNULL((SELECT SUM(customer_payments.payment_amount) FROM 
         customer_payments WHERE customer_payments.PaymentFor = :resID),0) AS remaining, currency.currencyName  FROM `residence`
@@ -695,20 +779,7 @@
         // encoding array to json format
         echo json_encode($data);
     }else if(isset($_POST['GetTotalResidencePendingP'])){
-        $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(total),0) AS TotalBalance FROM (SELECT currencyName,
-        IFNULL(SUM(residence.sale_price),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE
-        customer_payments.PaymentFor IS NOT NULL AND customer_payments.currencyID = residence.saleCurID) AS total FROM residence
-        INNER JOIN currency ON currency.currencyID = residence.saleCurID GROUP BY residence.saleCurID UNION ALL SELECT 
-        currencyName,IFNULL(SUM(residencefine.fineAmount),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM 
-        customer_payments WHERE customer_payments.residenceFinePayment IS NOT NULL AND customer_payments.currencyID = 
-        residencefine.fineCurrencyID) AS total FROM residencefine INNER JOIN currency ON currency.currencyID = 
-        residencefine.fineCurrencyID GROUP BY residencefine.fineCurrencyID) AS baseTable GROUP BY currencyName HAVING TotalBalance
-        != 0 ORDER BY currencyName ASC");
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
+        getTotalResidencePendingP();
     }else if(isset($_POST['GetSearchResult'])){
         $searchTerm = '%'.  str_replace(' ', '',strtolower($_POST['SearchTerm'])) . '%'; 
         $selectQuery = $pdo->prepare("SELECT 1 AS identifier, customer_id AS customer_id, customer_name AS customer_name, '' AS
@@ -846,6 +917,7 @@
         echo json_encode($data);
     }else if(isset($_POST['GetPaymentHistory'])){
         $selectQuery = $pdo->prepare("SELECT 
+            customer_payments.pay_id as paymentID,
             DATE_FORMAT(customer_payments.datetime, '%d-%b-%Y') as payment_date,
             customer_payments.payment_amount as amount,
             accounts.account_Name as account_name,
@@ -867,6 +939,8 @@
         $selectQuery->execute();
         $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
         echo json_encode($data);
+    }else if(isset($_POST['GetBanks'])){
+        getBanks();
     }
     function uploadExtraDocs(){
         $new_image_name = '';
@@ -900,6 +974,47 @@
             }
         }
         return $new_image_name;
+    }
+    function getTotalResidencePendingP(){
+        global $pdo;
+        $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(total),0) AS TotalBalance FROM (SELECT currencyName,
+        IFNULL(SUM(residence.sale_price),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE
+        customer_payments.PaymentFor IS NOT NULL AND customer_payments.currencyID = residence.saleCurID) AS total FROM residence
+        INNER JOIN currency ON currency.currencyID = residence.saleCurID GROUP BY residence.saleCurID UNION ALL SELECT 
+        currencyName,IFNULL(SUM(residencefine.fineAmount),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM 
+        customer_payments WHERE customer_payments.residenceFinePayment IS NOT NULL AND customer_payments.currencyID = 
+        residencefine.fineCurrencyID) AS total FROM residencefine INNER JOIN currency ON currency.currencyID = 
+        residencefine.fineCurrencyID GROUP BY residencefine.fineCurrencyID) AS baseTable GROUP BY currencyName HAVING TotalBalance
+        != 0 ORDER BY currencyName ASC");
+        $selectQuery->execute();
+        /* Fetch all of the remaining rows in the result set */
+        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+        // encoding array to json format
+        echo json_encode($data);
+    }
+    function getBanks() {
+        global $pdo;
+        try {
+            // First check if the banks table exists
+            $checkTable = $pdo->prepare("SHOW TABLES LIKE 'banks'");
+            $checkTable->execute();
+            if ($checkTable->rowCount() === 0) {
+                // Return empty array if table doesn't exist
+                echo json_encode([]);
+                return;
+            }
+            
+            // If we get here, the table exists, so get the banks
+            $sql = "SELECT id, bank_name FROM banks ORDER BY bank_name ASC";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute();
+            $banks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode($banks);
+        } catch (PDOException $e) {
+            error_log("Error fetching banks: " . $e->getMessage());
+            echo json_encode([]);
+        }
     }
     // Close connection
     unset($pdo); 

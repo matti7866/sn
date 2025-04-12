@@ -1,0 +1,865 @@
+<?php
+/**
+ * Process Emirates ID image
+ * Handles the conversion, compression, and data extraction
+ */
+
+// Enable error logging but don't display errors
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL);
+
+// Log errors to file instead of output
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/debug/eid_debug.log');
+
+// Debug function to log to a specific file
+function debug_log($message) {
+    $logFile = __DIR__ . '/debug/eid_debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
+}
+
+// Start session if not already started
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Define Google Document AI API settings
+define('USE_GOOGLE_DOCUMENT_AI', true);
+define('GOOGLE_DOCUMENT_AI_PROJECT_ID', '947608979620');
+define('GOOGLE_DOCUMENT_AI_LOCATION', 'us'); 
+define('GOOGLE_DOCUMENT_AI_PROCESSOR_ID', '578ee8fe31793cfe'); // Emirates ID processor (emdd)
+define('GOOGLE_APPLICATION_CREDENTIALS', __DIR__ . '/service-account-key.json');
+define('ENABLE_EID_OCR', true);
+define('USE_FALLBACK_TEST_DATA', false); // Use real OCR instead of test data
+define('DEBUG_MODE', true); // Enable detailed debugging
+
+// Check if the service account file exists
+if (!file_exists(GOOGLE_APPLICATION_CREDENTIALS)) {
+    debug_log("ERROR: Service account key file not found at: " . GOOGLE_APPLICATION_CREDENTIALS);
+} else {
+    debug_log("Service account key file found: " . GOOGLE_APPLICATION_CREDENTIALS);
+    $keyFileContent = file_get_contents(GOOGLE_APPLICATION_CREDENTIALS);
+    $keyJson = json_decode($keyFileContent, true);
+    if (json_last_error() === JSON_ERROR_NONE) {
+        debug_log("Service account key valid JSON with email: " . $keyJson['client_email']);
+    } else {
+        debug_log("Service account key not valid JSON: " . json_last_error_msg());
+    }
+}
+
+// Function to get test Emirates ID data
+function getTestEIDData() {
+    return [
+        'eid_number' => '784-1234-5678901-2',
+        'expiry_date' => date('Y-m-d', strtotime('+3 years')),
+        'name' => 'JOHN DOE',
+        'dob' => '1980-01-01',
+        'gender' => 'M'
+    ];
+}
+
+// Function to standardize date formats to YYYY-MM-DD
+function standardizeDate($dateString) {
+    if (empty($dateString)) return '';
+    
+    $dateString = trim($dateString);
+    
+    // Handle dates with month names like "20 MAY 2028"
+    if (preg_match('/(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/i', $dateString, $matches)) {
+        $day = $matches[1];
+        $month = $matches[2];
+        $year = $matches[3];
+        
+        // Convert month name to number
+        $monthNames = [
+            'jan' => 1, 'feb' => 2, 'mar' => 3, 'apr' => 4, 'may' => 5, 'jun' => 6,
+            'jul' => 7, 'aug' => 8, 'sep' => 9, 'oct' => 10, 'nov' => 11, 'dec' => 12
+        ];
+        
+        $monthLower = strtolower(substr($month, 0, 3));
+        if (isset($monthNames[$monthLower])) {
+            $monthNum = $monthNames[$monthLower];
+            // Format as YYYY-MM-DD
+            return sprintf('%04d-%02d-%02d', $year, $monthNum, $day);
+        }
+    }
+    
+    // Handle numeric dates
+    // Remove any text before or after the actual date
+    if (preg_match('/\d+[\.\/-]\d+[\.\/-]\d+/', $dateString, $matches)) {
+        $dateString = trim($matches[0]);
+        
+        // Try to parse the date with various formats
+        $formats = [
+            'd/m/Y', 'd-m-Y', 'd.m.Y',
+            'm/d/Y', 'm-d-Y', 'm.d.Y',
+            'Y/m/d', 'Y-m-d', 'Y.m.d',
+            'd/m/y', 'm/d/y', 'y/m/d'
+        ];
+        
+        foreach ($formats as $format) {
+            $date = DateTime::createFromFormat($format, $dateString);
+            if ($date !== false) {
+                // Convert to database format YYYY-MM-DD
+                return $date->format('Y-m-d');
+            }
+        }
+    }
+    
+    return $dateString; // Return original if no format matched
+}
+
+// Additional function to clean up extracted fields
+function cleanExtractedData(&$eidData) {
+    foreach ($eidData as $key => $value) {
+        if (empty($value)) continue;
+        
+        // Replace newlines with spaces
+        $value = str_replace(["\n", "\r"], ' ', $value);
+        
+        // Clean up Emirates ID number format
+        if ($key == 'eid_number') {
+            // Remove all non-digit and non-hyphen characters
+            $value = preg_replace('/[^\d\-]/', '', $value);
+            
+            // If we have raw digits with no formatting, add the UAE format (784-XXXX-XXXXXXX-X)
+            if (preg_match('/^784\d{12}$/', $value)) {
+                $value = '784-' . substr($value, 3, 4) . '-' . substr($value, 7, 7) . '-' . substr($value, 14, 1);
+            }
+            // If we have digits with inconsistent formatting, normalize it
+            else if (preg_match('/^784[\-\s]*(\d{4})[\-\s]*(\d{7})[\-\s]*(\d)$/', $value, $matches)) {
+                $value = '784-' . $matches[1] . '-' . $matches[2] . '-' . $matches[3];
+            }
+            
+            // Ensure the number starts with 784 (UAE country code)
+            if (!preg_match('/^784/', $value) && strlen($value) > 5) {
+                debug_log("Warning: Emirates ID doesn't start with 784 country code: " . $value);
+            }
+        }
+        
+        // Clean up date fields
+        if ($key == 'expiry_date' || $key == 'dob') {
+            $value = standardizeDate($value);
+        }
+        
+        // Clean up extra spaces
+        $value = preg_replace('/\s+/', ' ', $value);
+        $value = trim($value);
+        
+        $eidData[$key] = $value;
+    }
+    
+    debug_log("Cleaned EID data: " . json_encode($eidData));
+    return $eidData;
+}
+
+// Function to send JSON response
+function sendJsonResponse($success, $data = null, $error = null) {
+    header('Content-Type: application/json');
+    $response = [
+        'success' => $success,
+        'data' => $data,
+        'error' => $error
+    ];
+    debug_log("Sending response: " . json_encode($response));
+    echo json_encode($response);
+    
+    // Make sure all buffers are flushed
+    if (ob_get_length()) ob_end_flush();
+    flush();
+    
+    exit;
+}
+
+// Define upload directory 
+$uploadDir = __DIR__ . '/residence/temp/';
+
+// Ensure the upload directory exists with proper permissions
+if (!file_exists($uploadDir)) {
+    debug_log("Upload directory doesn't exist. Creating: " . $uploadDir);
+    if (!mkdir($uploadDir, 0777, true)) {
+        debug_log("Failed to create upload directory: " . $uploadDir);
+        sendJsonResponse(false, null, 'Failed to create upload directory');
+    }
+    chmod($uploadDir, 0777);
+} else {
+    debug_log("Upload directory exists: " . $uploadDir);
+}
+
+// Debug info
+debug_log("Current working directory: " . getcwd());
+debug_log("Upload directory: " . $uploadDir);
+debug_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+debug_log("FILES array: " . print_r($_FILES, true));
+debug_log("POST array: " . print_r($_POST, true));
+debug_log("Raw request body: " . file_get_contents('php://input'));
+
+// Check if the request method is POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    debug_log("Invalid request method: " . $_SERVER['REQUEST_METHOD']);
+    sendJsonResponse(false, null, 'Invalid request method');
+}
+
+// Check for the Emirates ID file
+if (!isset($_FILES['emiratesIDFile']) || empty($_FILES['emiratesIDFile']['name'])) {
+    debug_log("No file uploaded with name emiratesIDFile. Available fields: " . implode(', ', array_keys($_FILES)));
+    sendJsonResponse(false, null, 'No Emirates ID file uploaded');
+}
+
+$file = $_FILES['emiratesIDFile'];
+
+// Log file information
+debug_log("File upload details: " . json_encode($file));
+
+// Check file type - allow image and PDF formats
+$allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+$fileType = mime_content_type($file['tmp_name']);
+debug_log("Detected file type: " . $fileType);
+
+if (!in_array($fileType, $allowedTypes)) {
+    debug_log("Unsupported file type: " . $fileType);
+    sendJsonResponse(false, [
+        'extraction_error' => 'Please upload a JPEG, PNG, or PDF file of your Emirates ID. For best results, use a clear photo or scan showing the entire document.'
+    ], 'Unsupported file type for Emirates ID OCR');
+}
+
+// Check for upload errors
+if ($file['error'] !== UPLOAD_ERR_OK) {
+    $uploadErrors = [
+        UPLOAD_ERR_INI_SIZE => 'The uploaded file exceeds the upload_max_filesize directive in php.ini',
+        UPLOAD_ERR_FORM_SIZE => 'The uploaded file exceeds the MAX_FILE_SIZE directive in the HTML form',
+        UPLOAD_ERR_PARTIAL => 'The uploaded file was only partially uploaded',
+        UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+        UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder',
+        UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+        UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload'
+    ];
+    
+    $errorMessage = isset($uploadErrors[$file['error']]) ? $uploadErrors[$file['error']] : 'Unknown upload error';
+    debug_log("Upload error: " . $errorMessage);
+    sendJsonResponse(false, null, $errorMessage);
+}
+
+// Generate a unique filename
+$fileExtension = ($fileType === 'application/pdf') ? '.pdf' : '.jpg';
+$tempFileName = uniqid() . '_eid' . $fileExtension;
+$tempFilePath = $uploadDir . $tempFileName;
+
+// Copy the file
+if (!copy($file['tmp_name'], $tempFilePath)) {
+    debug_log("Failed to copy uploaded file to {$tempFilePath}");
+    sendJsonResponse(false, null, 'Failed to copy file for processing');
+}
+
+// Process the file for Emirates ID data
+try {
+    debug_log("Processing Emirates ID image: " . $tempFilePath);
+    
+    // Use fallback test data if enabled
+    if (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA) {
+        debug_log("Using fallback test data for Emirates ID");
+        $eidData = getTestEIDData();
+        sendJsonResponse(true, $eidData);
+    }
+    
+    // Read image as base64
+    $imageData = base64_encode(file_get_contents($tempFilePath));
+    
+    // Get an access token
+    putenv('GOOGLE_APPLICATION_CREDENTIALS=' . GOOGLE_APPLICATION_CREDENTIALS);
+    $accessToken = getAccessToken();
+    
+    if (!$accessToken) {
+        debug_log("Failed to get Google access token");
+        sendJsonResponse(false, ['extraction_error' => 'Authentication error. Please try again.'], 'Authentication failed');
+    }
+    
+    // Build Document AI request
+    $apiUrl = "https://" . GOOGLE_DOCUMENT_AI_LOCATION . "-documentai.googleapis.com/v1/projects/" . 
+              GOOGLE_DOCUMENT_AI_PROJECT_ID . "/locations/" . GOOGLE_DOCUMENT_AI_LOCATION . 
+              "/processors/" . GOOGLE_DOCUMENT_AI_PROCESSOR_ID . ":process";
+    
+    debug_log("Calling Document AI API at: " . $apiUrl);
+    
+    // Set the correct MIME type based on the uploaded file
+    $mimeType = $fileType;
+    
+    // Build exact request payload according to Document AI API documentation
+    $requestData = [
+        'rawDocument' => [
+            'content' => $imageData,
+            'mimeType' => $mimeType
+        ]
+    ];
+    
+    $jsonPayload = json_encode($requestData);
+    debug_log("Request payload length: " . strlen($jsonPayload));
+    
+    // Call Document AI API
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
+    
+    // SSL settings - skip verification in development only (not recommended for production)
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    
+    // Add verbose debug
+    curl_setopt($ch, CURLOPT_VERBOSE, true);
+    $verbose = fopen('php://temp', 'w+');
+    curl_setopt($ch, CURLOPT_STDERR, $verbose);
+    
+    // Set longer timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60); // 60 second timeout
+    
+    debug_log("Making Document AI API request to: " . $apiUrl);
+    debug_log("Using access token: " . substr($accessToken, 0, 10) . "...");
+    
+    $response = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    // Get verbose information
+    rewind($verbose);
+    $verboseLog = stream_get_contents($verbose);
+    debug_log("Document AI API verbose log: " . $verboseLog);
+    
+    // Check for curl errors
+    if (curl_errno($ch)) {
+        debug_log("cURL Error: " . curl_error($ch) . " (Error code: " . curl_errno($ch) . ")");
+        throw new Exception("cURL Error: " . curl_error($ch));
+    }
+    
+    curl_close($ch);
+    
+    debug_log("Document AI API Status: $status, Response length: " . strlen($response));
+    debug_log("Response preview: " . substr($response, 0, 500) . "...");
+    
+    if ($status == 200) {
+        $result = json_decode($response, true);
+        
+        if ($result) {
+            debug_log("Successfully decoded Document AI response");
+            debug_log("Response structure: " . json_encode(array_keys($result)));
+            
+            // Log all document entities to debug custom processor output
+            if (isset($result['document']) && isset($result['document']['entities'])) {
+                debug_log("Full entities list: " . json_encode($result['document']['entities']));
+            }
+            
+            // Process the response to extract Emirates ID data
+            $eidData = [
+                'eid_number' => '',
+                'expiry_date' => '',
+                'name' => '',
+                'dob' => '',
+                'gender' => ''
+            ];
+            
+            // Extract from entities if available
+            if (isset($result['document']) && isset($result['document']['entities'])) {
+                $entities = $result['document']['entities'];
+                debug_log("Found " . count($entities) . " entities in response");
+                
+                foreach ($entities as $entity) {
+                    if (!isset($entity['type']) || !isset($entity['mentionText'])) {
+                        continue;
+                    }
+                    
+                    $type = strtolower($entity['type']);
+                    $value = trim($entity['mentionText']);
+                    $confidence = isset($entity['confidence']) ? $entity['confidence'] : 0;
+                    
+                    debug_log("Found entity: $type = $value (confidence: $confidence)");
+                    
+                    // Map the custom processor fields
+                    switch($type) {
+                        case 'idnumber':
+                        case 'eid_number':
+                        case 'id_number':
+                        case 'card_number':
+                        case 'identity_number':
+                            $eidData['eid_number'] = $value;
+                            break;
+                        case 'expirydate':
+                        case 'expiry_date':
+                        case 'expiry':
+                        case 'valid_until':
+                        case 'expiration_date':
+                            $value = standardizeDate($value);
+                            $eidData['expiry_date'] = $value;
+                            break;
+                        case 'name':
+                        case 'full_name':
+                        case 'person_name':
+                        case 'passenger_name':
+                        case 'cardholder_name':
+                            // Clean up the name - remove label prefixes sometimes captured in the value
+                            $value = preg_replace('/^(name|full name|passenger|cardholder)[:\s]+/i', '', $value);
+                            $eidData['name'] = $value;
+                            break;
+                        case 'dob':
+                        case 'date_of_birth':
+                        case 'birth_date':
+                        case 'birthdate':
+                            $value = standardizeDate($value);
+                            $eidData['dob'] = $value;
+                            break;
+                        case 'issuingdate':
+                            // We capture this but don't use it in the current form
+                            $value = standardizeDate($value);
+                            debug_log("Found issuingdate: $value");
+                            break;
+                        case 'gender':
+                        case 'sex':
+                            $eidData['gender'] = $value;
+                            break;
+                        default:
+                            debug_log("Unknown entity type: $type with value: $value");
+                            break;
+                    }
+                }
+            } else {
+                debug_log("No structured entities found in response");
+            }
+            
+            // Extract Emirates ID number from text if not found through entities
+            if (empty($eidData['eid_number']) && isset($result['document']) && isset($result['document']['text'])) {
+                $fullText = $result['document']['text'];
+                debug_log("Attempting Emirates ID number extraction from document content");
+                
+                // Emirates ID pattern (784-XXXX-XXXXXXX-X)
+                if (preg_match('/[^\d]?(784[\-\s]*\d{4}[\-\s]*\d{7}[\-\s]*\d)[^\d]?/', $fullText, $matches)) {
+                    $eidData['eid_number'] = $matches[1];
+                    debug_log("Extracted Emirates ID from text: " . $eidData['eid_number']);
+                }
+            }
+            
+            // Extract expiry date from text if not found through entities
+            if (empty($eidData['expiry_date']) && isset($result['document']) && isset($result['document']['text'])) {
+                $fullText = $result['document']['text'];
+                
+                // Try various expiry date patterns
+                $patterns = [
+                    '/expiry\s*(?:date)?[\s:]*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/',
+                    '/valid\s*(?:until|thru|to)[\s:]*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/',
+                    '/expiration\s*(?:date)?[\s:]*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/',
+                    '/(?:exp|valid)[\s:]*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/',
+                    // Date patterns with month names
+                    '/(?:exp|valid|expiry|expiration)[\s:]*(\d{1,2}\s+[a-zA-Z]{3,}\s+\d{4})/'
+                ];
+                
+                foreach ($patterns as $pattern) {
+                    if (preg_match($pattern, $fullText, $matches)) {
+                        $eidData['expiry_date'] = standardizeDate($matches[1]);
+                        debug_log("Extracted expiry date from text: " . $eidData['expiry_date']);
+                        break;
+                    }
+                }
+            }
+            
+            // Extract full name from text if not found through entities
+            if (empty($eidData['name']) && isset($result['document']) && isset($result['document']['text'])) {
+                $fullText = $result['document']['text'];
+                
+                // Emirates ID specific name patterns
+                $namePatterns = [
+                    // Common format where name follows a label
+                    '/(?:name|full name|passenger name)[\s:]+([A-Za-z\s\.\,\-\']+)(?:\s|\n|$)/i',
+                    // Latin name pattern (all caps, multiple words)
+                    '/\b([A-Z][A-Z\s\.]+(?:[A-Z]{2,})+)\b/',
+                    // Name after ID number pattern (specific to EID format)
+                    '/784[\-\s]*\d{4}[\-\s]*\d{7}[\-\s]*\d[^\n\r]*?(?:\s|\n)([A-Za-z\s\.\,\-\']+)(?:\s|\n|$)/',
+                    // Name before DOB pattern
+                    '/([A-Za-z\s\.\,\-\']{5,})\s+(?:Date of Birth|DOB)[:\s]/i',
+                    // Two or three word name pattern (common on Emirates ID)
+                    '/\b([A-Z][a-z]+\s+(?:[A-Z][a-z]+\s+)?[A-Z][a-z]+)\b/'
+                ];
+                
+                foreach ($namePatterns as $pattern) {
+                    if (preg_match($pattern, $fullText, $matches)) {
+                        $potentialName = trim($matches[1]);
+                        // Only use if it looks like a name (at least 5 chars, contains a space)
+                        if (strlen($potentialName) > 5 && strpos($potentialName, ' ') !== false) {
+                            $eidData['name'] = $potentialName;
+                            debug_log("Extracted name from text pattern: " . $potentialName);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Additional DOB extraction from specific Emirates ID formats
+            if (empty($eidData['dob']) && isset($result['document']) && isset($result['document']['text'])) {
+                $fullText = $result['document']['text'];
+                
+                // Emirates ID specific DOB patterns
+                $dobPatterns = [
+                    // Pattern: DOB appears right after name
+                    '/Name[:\s]+[^\n\r]+(.*?)[\s:]+(\d{2}[\/-]\d{2}[\/-]\d{4})/i',
+                    // Pattern: DOB with common UAE format (DD-MM-YYYY)
+                    '/(?:Date of Birth|Birth Date|DOB)[:\s\.]+\s*(\d{2})[\-\.\/](\d{2})[\-\.\/](\d{4})/i',
+                    // Pattern: Common position after nationality
+                    '/Nationality[:\s]+[A-Z]+\s+(\d{2}[\/-]\d{2}[\/-]\d{4})/i',
+                    // Pattern: DOB is often in a specific format on EID cards
+                    '/\b(0[1-9]|[12][0-9]|3[01])[\.\/\-](0[1-9]|1[012])[\.\/\-](19|20)\d\d\b/',
+                    // Pattern: Sometimes it's formatted with Arabic month names
+                    '/(\d{1,2})\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i'
+                ];
+                
+                foreach ($dobPatterns as $pattern) {
+                    if (preg_match($pattern, $fullText, $matches)) {
+                        // Handle the case where we have separate day, month, year capture groups
+                        if (count($matches) > 3) {
+                            $day = $matches[1];
+                            $month = $matches[2];
+                            $year = $matches[3];
+                            $eidData['dob'] = sprintf('%04d-%02d-%02d', $year, $month, $day);
+                        } else {
+                            $eidData['dob'] = standardizeDate($matches[1]);
+                        }
+                        debug_log("Extracted DOB from Emirates ID specific pattern: " . $eidData['dob']);
+                        break;
+                    }
+                }
+            }
+            
+            // Special case: If we find a date that looks like it's from the past (more than 18 years ago)
+            if (empty($eidData['dob']) && isset($result['document']) && isset($result['document']['text'])) {
+                $fullText = $result['document']['text'];
+                
+                // Look for any date format in the text
+                $datePatterns = [
+                    '/\b(\d{2})[\/-\.](\d{2})[\/-\.](\d{4})\b/', // DD/MM/YYYY or similar
+                    '/\b(\d{4})[\/-\.](\d{2})[\/-\.](\d{2})\b/', // YYYY/MM/DD or similar
+                    '/\b(\d{1,2})\s+([a-zA-Z]{3,})\s+(\d{4})\b/' // DD Month YYYY
+                ];
+                
+                foreach ($datePatterns as $i => $datePattern) {
+                    preg_match_all($datePattern, $fullText, $allDates, PREG_SET_ORDER);
+                    if (!empty($allDates)) {
+                        foreach ($allDates as $dateMatches) {
+                            // Format the date properly based on the pattern used
+                            if ($i === 0) { // DD/MM/YYYY pattern
+                                $day = $dateMatches[1];
+                                $month = $dateMatches[2];
+                                $year = $dateMatches[3];
+                                $standardizedDate = "$year-$month-$day";
+                            } else if ($i === 1) { // YYYY/MM/DD pattern
+                                $year = $dateMatches[1];
+                                $month = $dateMatches[2];
+                                $day = $dateMatches[3];
+                                $standardizedDate = "$year-$month-$day";
+                            } else { // DD Month YYYY pattern
+                                $standardizedDate = standardizeDate($dateMatches[0]);
+                            }
+                            
+                            $dateTime = DateTime::createFromFormat('Y-m-d', $standardizedDate);
+                            if ($dateTime) {
+                                $currentYear = (int)date('Y');
+                                $birthYear = (int)$dateTime->format('Y');
+                                // If the date is more than 18 years in the past and less than 100 years ago
+                                if (($currentYear - $birthYear) >= 18 && ($currentYear - $birthYear) <= 100) {
+                                    $eidData['dob'] = $standardizedDate;
+                                    debug_log("Extracted likely date of birth based on year range: " . $eidData['dob']);
+                                    break 2; // Break both loops
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Last resort - try to extract a date from any number sequence that might be DOB
+            if (empty($eidData['dob']) && isset($result['document']) && isset($result['document']['text'])) {
+                $fullText = $result['document']['text'];
+                
+                // Look for any number pattern that might be a date DD-MM-YY or DDMMYYYY
+                if (preg_match_all('/\b\d{6,8}\b/', $fullText, $matches)) {
+                    foreach ($matches[0] as $potentialDate) {
+                        $length = strlen($potentialDate);
+                        $potentialDob = '';
+                        
+                        if ($length == 6) { // DDMMYY
+                            $day = substr($potentialDate, 0, 2);
+                            $month = substr($potentialDate, 2, 2);
+                            $year = substr($potentialDate, 4, 2);
+                            // Assume 19xx for years > current year, 20xx otherwise
+                            $fullYear = ($year > date('y')) ? "19$year" : "20$year";
+                            $potentialDob = "$fullYear-$month-$day";
+                        } elseif ($length == 8) { // DDMMYYYY or YYYYMMDD
+                            // Try both DDMMYYYY and YYYYMMDD formats
+                            $formats = [
+                                sprintf('%s-%s-%s', substr($potentialDate, 4, 4), substr($potentialDate, 2, 2), substr($potentialDate, 0, 2)),
+                                sprintf('%s-%s-%s', substr($potentialDate, 0, 4), substr($potentialDate, 4, 2), substr($potentialDate, 6, 2))
+                            ];
+                            
+                            foreach ($formats as $format) {
+                                $date = DateTime::createFromFormat('Y-m-d', $format);
+                                if ($date && $date->format('Y-m-d') === $format) {
+                                    $year = (int)$date->format('Y');
+                                    $currentYear = (int)date('Y');
+                                    if ($year > 1900 && $year < $currentYear && ($currentYear - $year) >= 18 && ($currentYear - $year) <= 100) {
+                                        $potentialDob = $format;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!empty($potentialDob)) {
+                            $eidData['dob'] = $potentialDob;
+                            debug_log("Extracted likely DOB from number sequence: " . $potentialDob);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Clean up data to remove field names and fix formatting
+            cleanExtractedData($eidData);
+            
+            // Check if we have any real data
+            $hasData = false;
+            foreach ($eidData as $key => $value) {
+                if (!empty($value) && $key != 'extraction_error') {
+                    $hasData = true;
+                    break;
+                }
+            }
+            
+            if ($hasData) {
+                debug_log("Successfully extracted Emirates ID data");
+                sendJsonResponse(true, $eidData);
+            } else {
+                debug_log("No data extracted from Emirates ID");
+                // Check if fallback data is enabled and use it
+                if (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA) {
+                    debug_log("No data extracted. Using fallback test data");
+                    $eidData = getTestEIDData();
+                    sendJsonResponse(true, $eidData);
+                } else {
+                    sendJsonResponse(false, ['extraction_error' => 'Could not extract data from the Emirates ID image. Please try a clearer image.'], 'No data extracted');
+                }
+            }
+        } else {
+            debug_log("Failed to decode Document AI response");
+            
+            // Check if fallback data is enabled and use it
+            if (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA) {
+                debug_log("Failed to decode response. Using fallback test data");
+                $eidData = getTestEIDData();
+                sendJsonResponse(true, $eidData);
+            } else {
+                sendJsonResponse(false, ['extraction_error' => 'Invalid response from OCR service. Please try again.'], 'Invalid response');
+            }
+        }
+    } else {
+        debug_log("Document AI API returned error status: " . $status);
+        debug_log("Response: " . $response);
+        
+        // Log detailed error information if available
+        $responseData = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE && isset($responseData['error'])) {
+            debug_log("Detailed API error: " . json_encode($responseData['error']));
+            
+            // Check for specific error types
+            if (isset($responseData['error']['status']) && $responseData['error']['status'] === 'PERMISSION_DENIED') {
+                debug_log("API permission denied error - check service account permissions");
+            } else if (isset($responseData['error']['status']) && $responseData['error']['status'] === 'INVALID_ARGUMENT') {
+                debug_log("API invalid argument error - check request format");
+            }
+        }
+        
+        // Check if fallback data is enabled and use it
+        debug_log("Checking if fallback data should be used: " . (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA ? 'Yes' : 'No'));
+        
+        // Use fallback test data if enabled, even when the API call fails
+        if (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA) {
+            debug_log("API call failed. Using fallback test data");
+            $eidData = getTestEIDData();
+            // Force success to true when using fallback data
+            sendJsonResponse(true, $eidData);
+            exit; // Ensure no further processing
+        } else {
+            sendJsonResponse(false, ['extraction_error' => 'Error communicating with OCR service. Please try again.'], 'API error');
+        }
+    }
+} catch (Exception $e) {
+    debug_log("Exception during Emirates ID processing: " . $e->getMessage());
+    debug_log("Exception trace: " . $e->getTraceAsString());
+    
+    // Check if fallback data is enabled and use it
+    debug_log("Exception caught. Checking if fallback data should be used: " . (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA ? 'Yes' : 'No'));
+    
+    // Use fallback test data if enabled, even when there's an exception
+    if (defined('USE_FALLBACK_TEST_DATA') && USE_FALLBACK_TEST_DATA) {
+        debug_log("Exception occurred. Using fallback test data");
+        $eidData = getTestEIDData();
+        sendJsonResponse(true, $eidData);
+        exit; // Ensure no further processing
+    } else {
+        sendJsonResponse(false, ['extraction_error' => 'Error processing Emirates ID image: ' . $e->getMessage()], 'Processing error');
+    }
+}
+
+// Function to get access token
+function getAccessToken() {
+    try {
+        debug_log("Starting authentication process");
+        
+        if (!file_exists(GOOGLE_APPLICATION_CREDENTIALS)) {
+            debug_log("Service account credentials file not found: " . GOOGLE_APPLICATION_CREDENTIALS);
+            return false;
+        }
+        
+        debug_log("Reading service account key file");
+        // Read service account key file
+        $keyContent = file_get_contents(GOOGLE_APPLICATION_CREDENTIALS);
+        if (!$keyContent) {
+            debug_log("Empty or unreadable service account key file");
+            return false;
+        }
+        
+        // Enable more verbose JSON error reporting
+        $previousValue = null;
+        if (function_exists('json_last_error_msg')) {
+            $previousValue = ini_get('display_errors');
+            ini_set('display_errors', 1);
+        }
+        
+        $serviceAccountKey = json_decode($keyContent, true);
+        $jsonError = json_last_error();
+        
+        // Restore previous error reporting setting
+        if ($previousValue !== null) {
+            ini_set('display_errors', $previousValue);
+        }
+        
+        if ($jsonError !== JSON_ERROR_NONE) {
+            debug_log("Failed to parse service account key JSON: " . json_last_error_msg());
+            debug_log("JSON content (truncated): " . substr($keyContent, 0, 100) . "...");
+            return false;
+        }
+        
+        // Check required fields
+        if (!isset($serviceAccountKey['client_email'])) {
+            debug_log("Service account key missing client_email field");
+            return false;
+        }
+        
+        if (!isset($serviceAccountKey['private_key'])) {
+            debug_log("Service account key missing private_key field");
+            return false;
+        }
+        
+        debug_log("Creating JWT token with email: " . $serviceAccountKey['client_email']);
+        
+        // Create JWT payload
+        $now = time();
+        $payload = [
+            'iss' => $serviceAccountKey['client_email'],
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'exp' => $now + 3600,
+            'iat' => $now,
+            'scope' => 'https://www.googleapis.com/auth/cloud-platform'
+        ];
+        
+        // Create JWT header
+        $header = [
+            'alg' => 'RS256',
+            'typ' => 'JWT',
+            'kid' => $serviceAccountKey['private_key_id']
+        ];
+        
+        // Encode JWT header and payload
+        $base64Header = rtrim(strtr(base64_encode(json_encode($header)), '+/', '-_'), '=');
+        $base64Payload = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
+        
+        debug_log("Signing JWT with private key");
+        
+        // Create signature
+        $privateKey = $serviceAccountKey['private_key'];
+        $signature = '';
+        
+        // Check if the private key is in the correct format
+        if (strpos($privateKey, '-----BEGIN PRIVATE KEY-----') === false) {
+            debug_log("Private key does not appear to be in the correct format");
+            return false;
+        }
+        
+        $success = openssl_sign(
+            $base64Header . '.' . $base64Payload,
+            $signature,
+            $privateKey,
+            'SHA256'
+        );
+        
+        if (!$success) {
+            debug_log("Failed to create JWT signature. OpenSSL error: " . openssl_error_string());
+            return false;
+        }
+        
+        // Encode signature
+        $base64Signature = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+        
+        // Create JWT
+        $jwt = $base64Header . '.' . $base64Payload . '.' . $base64Signature;
+        
+        debug_log("JWT token created, requesting access token from Google");
+        
+        // Request access token
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion' => $jwt
+        ]));
+        
+        // SSL settings for development
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        
+        // Add verbose debug
+        curl_setopt($ch, CURLOPT_VERBOSE, true);
+        $verbose = fopen('php://temp', 'w+');
+        curl_setopt($ch, CURLOPT_STDERR, $verbose);
+        
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        
+        // Get verbose information
+        rewind($verbose);
+        $verboseLog = stream_get_contents($verbose);
+        debug_log("OAuth verbose log: " . $verboseLog);
+        
+        curl_close($ch);
+        
+        if ($status != 200) {
+            debug_log("Failed to get access token. Status: $status, Response: $response");
+            return false;
+        }
+        
+        $result = json_decode($response, true);
+        if (!isset($result['access_token'])) {
+            debug_log("Access token not found in response: " . $response);
+            return false;
+        }
+        
+        debug_log("Successfully obtained access token");
+        return $result['access_token'];
+    } catch (Exception $e) {
+        debug_log("Exception getting access token: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+        debug_log("Stack trace: " . $e->getTraceAsString());
+        return false;
+    }
+}

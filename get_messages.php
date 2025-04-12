@@ -8,12 +8,19 @@ include 'connection.php';
 
 header('Content-Type: application/json');
 
-$chat_id = $_GET['chat'] ?? 'main';
+// Function to generate consistent private chat ID
+function generatePrivateChatId($user1, $user2) {
+    $ids = [$user1, $user2];
+    sort($ids);
+    return implode('_', $ids);
+}
+
+$input_chat_id = $_GET['chat'] ?? 'main';
 $user_id = $_SESSION['user_id'];
 
-if ($chat_id === 'main') {
+if ($input_chat_id === 'main') {
     $stmt = $pdo->prepare("
-        SELECT cm.*, s.staff_name 
+        SELECT cm.*, s.staff_name, s.staff_pic 
         FROM chat_messages cm 
         JOIN staff s ON cm.staff_id = s.staff_id 
         WHERE cm.chat_id = 'main' 
@@ -21,15 +28,15 @@ if ($chat_id === 'main') {
     ");
     $stmt->execute();
 } else {
+    $chat_id = generatePrivateChatId($user_id, $input_chat_id);
     $stmt = $pdo->prepare("
-        SELECT cm.*, s.staff_name 
+        SELECT cm.*, s.staff_name, s.staff_pic 
         FROM chat_messages cm 
         JOIN staff s ON cm.staff_id = s.staff_id 
         WHERE cm.chat_id = ? 
-        AND (cm.staff_id = ? OR cm.chat_id = ?)
         ORDER BY cm.timestamp ASC
     ");
-    $stmt->execute([$chat_id, $user_id, $user_id]);
+    $stmt->execute([$chat_id]);
 }
 
 $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
