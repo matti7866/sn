@@ -1,6 +1,5 @@
 email_debug.log
 email_fetch.log
-WB0N89JMK.zip.494007168.upload.tmp
 *.log
-*.zip.upload.tmp
-
+*.zip
+*.tmp
