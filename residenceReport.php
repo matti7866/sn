@@ -231,7 +231,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-info" onclick="makePay()">Save</button>
+        <button type="button" class="btn btn-info" onclick="makePayAndEmail()"><i class="fa fa-envelope me-1"></i> Save & Send Email</button>
         </form>
       </div>
     </div>
@@ -928,6 +928,109 @@ function makePay(){
             },
         });
 }
+
+function makePayAndEmail(){
+    var insert_payment ="INSERT_Payment_Email";
+    var payment = $('#pay');
+    if(payment.val() == ""){
+        notify('Validation Error!', 'payment is required', 'error');
+        return;
+    }
+    var remarks= $('#remarks');
+    var account_id = $('#account_id');
+    if(account_id.val() == "-1"){
+        notify('Validation Error!', 'account is required', 'error');
+        return;
+    }
+    var resID = $('#resID');
+    if(resID.val() == "-1"){
+        notify('Validation Error!', 'Something went wrong', 'error');
+        return;
+    }
+    
+    // Show loading indicator
+    var saveEmailBtn = $('button[onclick="makePayAndEmail()"]');
+    var originalBtnText = saveEmailBtn.html();
+    saveEmailBtn.html('<i class="fa fa-spinner fa-spin"></i> Processing...');
+    saveEmailBtn.prop('disabled', true);
+    
+    $.ajax({
+        type: "POST",
+        url: "residenceReportController.php",  
+        data: {
+            Insert_Payment_Email: insert_payment,
+            Payment: payment.val(),
+            Remarks: remarks.val(),
+            Account_ID: account_id.val(),
+            ResID: resID.val(),
+            SendEmail: true
+        },
+        success: function (response) {
+            try {
+                // Check if response is already a JSON object
+                var result = typeof response === 'object' ? response : JSON.parse(response);
+                
+                if(result.status === "Success"){
+                    notify('Success!', result.message || 'Payment saved and email sent successfully', 'success');
+                    $('#myModel').modal('hide');
+                    if($("#residenceTabs li a.active").attr('href') == "#default-tab-1"){
+                        getPendingResidence();
+                    }else if($("#residenceTabs li a.active").attr('href') == "#default-tab-2"){
+                        getPendingPayForResidence();
+                    }
+                    payment.val('');
+                    resID.val('');
+                    $('#remarks').val('');
+                    showTotalFineView();
+                } else {
+                    var errorMsg = result.message || 'Failed to process request';
+                    console.error("Error details:", result);
+                    notify('Error!', errorMsg, 'error');
+                }
+            } catch (e) {
+                console.error("Error parsing response:", e, "Response:", response);
+                
+                // Try to handle non-JSON responses
+                if(typeof response === 'string' && response.includes("Success")){
+                    notify('Success!', 'Payment saved successfully. Note: Email notification may not have been sent.', 'success');
+                    $('#myModel').modal('hide');
+                    if($("#residenceTabs li a.active").attr('href') == "#default-tab-1"){
+                        getPendingResidence();
+                    }else if($("#residenceTabs li a.active").attr('href') == "#default-tab-2"){
+                        getPendingPayForResidence();
+                    }
+                    payment.val('');
+                    resID.val('');
+                    $('#remarks').val('');
+                    showTotalFineView();
+                } else {
+                    notify('Error!', 'Failed to process response: ' + response, 'error');
+                }
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX error:", xhr.responseText);
+            var errorMessage = "Failed to communicate with server";
+            
+            try {
+                var response = JSON.parse(xhr.responseText);
+                if (response && response.message) {
+                    errorMessage = response.message;
+                }
+            } catch (e) {
+                errorMessage += ": " + error;
+            }
+            
+            notify('Error!', errorMessage, 'error');
+        },
+        complete: function() {
+            // Restore button state
+            saveEmailBtn.html(originalBtnText);
+            saveEmailBtn.prop('disabled', false);
+        }
+    });
+}
+
 function getAccounts(type,id){
     var select_Accounts = "SELECT_Accounts";
     $.ajax({

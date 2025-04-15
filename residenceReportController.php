@@ -941,6 +941,193 @@
         echo json_encode($data);
     }else if(isset($_POST['GetBanks'])){
         getBanks();
+    }else if(isset($_POST['Insert_Payment_Email'])){
+        try {
+            $pdo->beginTransaction();
+                
+            $Payment = $_POST['Payment'];
+            $resID = $_POST['ResID'];
+            $Account_ID = $_POST['Account_ID'];
+            $remarks = $_POST['Remarks'];
+            
+            // First, get the residence and customer info to include in email
+            $getInfoQuery = "SELECT customer.customer_id, customer.customer_name, customer.customer_email, residence.passenger_name, 
+                        residence.sale_price, currency.currencyName, customer.customer_phone, residence.saleCurID
+                        FROM residence 
+                        INNER JOIN customer ON customer.customer_id = residence.customer_id
+                        INNER JOIN currency ON currency.currencyID = residence.saleCurID
+                        WHERE residence.residenceID = :resID";
+            $getInfoStmt = $pdo->prepare($getInfoQuery);
+            $getInfoStmt->bindParam(':resID', $resID);
+            $getInfoStmt->execute();
+            $customerInfo = $getInfoStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$customerInfo) {
+                throw new Exception("Customer information not found");
+            }
+            
+            // Continue with payment insertion
+            $insertPaymentQuery = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+                            PaymentFor, remarks) VALUES (:customer_id, :payment, :currencyID, :staff_id, :accountID, :resID, :remarks)";
+            $insertStmt = $pdo->prepare($insertPaymentQuery);
+            $insertStmt->bindParam(':customer_id', $customerInfo['customer_id']);
+            $insertStmt->bindParam(':payment', $Payment);
+            $insertStmt->bindParam(':currencyID', $customerInfo['saleCurID']);
+            $insertStmt->bindParam(':staff_id', $_SESSION['user_id']);
+            $insertStmt->bindParam(':accountID', $Account_ID);
+            $insertStmt->bindParam(':resID', $resID);
+            $insertStmt->bindParam(':remarks', $remarks);
+            $insertStmt->execute();
+            
+            // Check if total payment equals sale price, if so update completedStep if needed
+            $paymentQuery = "SELECT IFNULL(SUM(payment_amount),0) AS total FROM `customer_payments` WHERE PaymentFor = :resID";
+            $paymentStmt = $pdo->prepare($paymentQuery);
+            $paymentStmt->bindParam(':resID', $resID);
+            $paymentStmt->execute();
+            $total = $paymentStmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            $residenceQuery = "SELECT * FROM residence WHERE residenceID = :resID";
+            $residenceStmt = $pdo->prepare($residenceQuery);
+            $residenceStmt->bindParam(':resID', $resID);
+            $residenceStmt->execute();
+            $rpt = $residenceStmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            if($total[0]['total'] >= $rpt[0]['sale_price'] && $rpt[0]['completedStep'] < 10 && $rpt[0]['completedStep'] >= 6){
+                $update = "UPDATE residence SET completedStep = 10 WHERE residenceID = :resID";
+                $updateStmt = $pdo->prepare($update);
+                $updateStmt->bindParam(':resID', $resID);
+                $updateStmt->execute();
+            }
+            
+            if($total[0]['total'] == 0){
+                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+                $updateLockTranStmt = $pdo->prepare($updateLockTran);
+                $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
+                $updateLockTranStmt->execute();
+            }
+            
+            // Send email notification
+            $success = true;
+            $emailMsg = "";
+            
+            if (!empty($customerInfo['customer_email'])) {
+                // Use PHPMailer to send email
+                require 'vendor/autoload.php';
+                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                
+                try {
+                    $mail->isSMTP();
+                    $mail->Host = 'smtp.gmail.com';
+                    $mail->SMTPAuth = true;
+                    $mail->Username = 'selabnadirydxb@gmail.com';
+                    $mail->Password = 'qyzuznoxbrfmjvxa';
+                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port = 587;
+                    
+                    // Format current date/time for email
+                    $paymentDate = date('d M Y, h:i A');
+                    
+                    // Sender and recipient
+                    $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
+                    $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
+                    
+                    // Email content
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Payment Confirmation - SN Travels';
+                    
+                    // Build email body with payment details
+                    $emailBody = "
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                            .header { background-color: #ff423e; color: white; padding: 15px; text-align: center; }
+                            .content { padding: 20px; border: 1px solid #ddd; border-top: none; }
+                            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+                            table { width: 100%; border-collapse: collapse; }
+                            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+                            th { background-color: #f2f2f2; }
+                            .highlight { font-weight: bold; color: #ff423e; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class='container'>
+                            <div class='header'>
+                                <h2>Payment Confirmation</h2>
+                            </div>
+                            <div class='content'>
+                                <p>Dear {$customerInfo['customer_name']},</p>
+                                <p>Thank you for your payment. We are pleased to confirm that we have received your payment successfully.</p>
+                                
+                                <h3>Payment Details:</h3>
+                                <table>
+                                    <tr>
+                                        <th>Payment Date</th>
+                                        <td>{$paymentDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Passenger Name</th>
+                                        <td>{$customerInfo['passenger_name']}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Amount Paid</th>
+                                        <td class='highlight'>{$Payment} {$customerInfo['currencyName']}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Payment Type</th>
+                                        <td>Residence Payment</td>
+                                    </tr>
+                                </table>
+                                
+                                <p>If you have any questions or need further assistance, please contact us at:</p>
+                                <p>Phone: +971-4-293-9477</p>
+                                <p>Email: info@sntrips.com</p>
+                                
+                                <p>Thank you for choosing SN Travels.</p>
+                                <p>Best regards,<br>SN Travels Team</p>
+                            </div>
+                            <div class='footer'>
+                                <p>This is an automated email. Please do not reply to this message.</p>
+                                <p>&copy; " . date('Y') . " SN Travels. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>";
+                    
+                    $mail->Body = $emailBody;
+                    $mail->AltBody = "Payment confirmation for {$customerInfo['passenger_name']}. Amount: {$Payment} {$customerInfo['currencyName']}. Date: {$paymentDate}";
+                    
+                    $mail->send();
+                    $emailMsg = "Email sent successfully to {$customerInfo['customer_email']}";
+                } catch (Exception $e) {
+                    $success = false;
+                    $emailMsg = "Failed to send email: " . $mail->ErrorInfo;
+                }
+            } else {
+                $success = false;
+                $emailMsg = "Customer email not available";
+            }
+            
+            $pdo->commit();
+            
+            // Return JSON response
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'Success',
+                'message' => 'Payment saved successfully. ' . ($success ? $emailMsg : 'Note: ' . $emailMsg),
+                'email_sent' => $success
+            ]);
+            
+        } catch (Exception $e) {
+            $pdo->rollback();
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'Error',
+                'message' => "Failed to process payment: " . $e->getMessage()
+            ]);
+        }
     }
     function uploadExtraDocs(){
         $new_image_name = '';

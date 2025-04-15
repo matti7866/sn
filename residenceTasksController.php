@@ -1,7 +1,7 @@
 <?php
-
-
-
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL);
 session_start();
 
 include 'connection.php';
@@ -75,27 +75,6 @@ if (!in_array($action, [
     'setContractSubmission',
     'setTawjeeh',
     'setILOE'
-])) {
-    api_response(['message' => 'Invalid action', 'status' => 'error']);
-}
-if (!in_array($action, [
-    'setOfferLetterStatus',
-    'seteVisaStatus',
-    'setHold',
-    'getPassenger',
-    'addResidence',
-    'setOfferLetter',
-    'setInsurance',
-    'setLabourCard',
-    'setEVisa',
-    'setChangeStatus',
-    'setMedical',
-    'setEmiratesID',
-    'setVisaStamping',
-    'setContractSubmission',
-    'setTawjeeh',
-    'setILOE',
-    'ExtractPassportData' // Added new action
 ])) {
     api_response(['message' => 'Invalid action', 'status' => 'error']);
 }
@@ -942,60 +921,3 @@ if ($action == 'setILOE') {
     ]);
     api_response(['status' => 'success', 'message' => 'ILOE set successfully']);
 }
-if ($action == 'ExtractPassportData') {
-    $apiKey = "secret_l7hzAhASqVj3bBl5"; // Replace with your actual key, ideally from a config file
-    $url = "https://api.mindee.net/v1/products/mindee/passport/v1/predict";
-
-    if (!isset($_FILES['passportFile']) || $_FILES['passportFile']['error'] !== UPLOAD_ERR_OK) {
-        api_response(['status' => 'error', 'message' => 'No valid passport file uploaded']);
-    }
-
-    $filePath = $_FILES['passportFile']['tmp_name'];
-    $fileName = $_FILES['passportFile']['name'];
-    $allowedExtensions = ['jpg', 'jpeg', 'png'];
-    $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-    if (!in_array($extension, $allowedExtensions)) {
-        api_response(['status' => 'error', 'message' => 'Invalid file type. Use JPG, JPEG, or PNG']);
-    }
-    if ($_FILES['passportFile']['size'] > 20971520) { // 20 MB limit
-        api_response(['status' => 'error', 'message' => 'File size exceeds 20 MB']);
-    }
-
-    $ch = curl_init();
-    $cFile = curl_file_create($filePath, mime_content_type($filePath), $fileName);
-
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Token $apiKey"]);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, ['document' => $cFile]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    if ($httpCode !== 201) {
-        $error = curl_error($ch);
-        curl_close($ch);
-        api_response(['status' => 'error', 'message' => 'API request failed: ' . $error]);
-    }
-
-    curl_close($ch);
-    $data = json_decode($response, true);
-    $prediction = $data['document']['inference']['prediction'];
-
-    $result = [
-        'status' => 'success',
-        'message' => 'Passport data extracted successfully',
-        'data' => [
-            'passengerName' => implode(' ', array_column($prediction['given_names'], 'value')) . ' ' . $prediction['surname']['value'],
-            'passportNumber' => $prediction['id_number']['value'],
-            'passportExpiryDate' => $prediction['expiry_date']['value'],
-            'dob' => $prediction['birth_date']['value'],
-            'nationality' => $prediction['country']['value']
-        ]
-    ];
-
-    api_response($result);
-}
-?>

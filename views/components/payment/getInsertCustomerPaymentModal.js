@@ -1,4 +1,7 @@
 function drawCustomerPaymentModal(){
+    // Clear any existing modal first
+    $('#customer-payment-modal').empty();
+    
     var cusPaymentModal = `
     <div class="modal dropdownModal fade" id="exampleModal"  role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
@@ -44,12 +47,23 @@ function drawCustomerPaymentModal(){
               </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary"  data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button onclick="makePayAndEmail()" id="mkCustomerPayEmailBtn" type="button" class="btn btn-primary" style="font-weight: bold; margin-right: 5px;"><i class="fa fa-envelope me-1"></i> Save & Send Email</button>
             <button onclick="makePay()" id="mkCustomerPayBtn" type="button" class="btn text-white bg-danger">Save</button>
           </div>
           </form>
         </div>
       </div>
     </div>`;
-    $('#customer-payment-modal').append(cusPaymentModal);
+    
+    // Add the modal to the page
+    $('#customer-payment-modal').html(cusPaymentModal);
+    
+    // Verify email button was added
+    setTimeout(function() {
+        if ($('#mkCustomerPayEmailBtn').length === 0) {
+            console.log("Email button wasn't added properly, inserting it manually");
+            $('.modal-footer button:last').before('<button onclick="makePayAndEmail()" id="mkCustomerPayEmailBtn" type="button" class="btn btn-primary" style="font-weight: bold; margin-right: 5px;"><i class="fa fa-envelope me-1"></i> Save & Send Email</button>');
+        }
+    }, 100);
 }
