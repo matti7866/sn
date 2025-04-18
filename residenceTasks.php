@@ -320,6 +320,7 @@ $suppliers = $suppliersQuery->fetchAll(\PDO::FETCH_ASSOC);
                        <ul class="dropdown-menu" style="">
                           <li><button class="dropdown-item" type="button" onClick="javascript:openInsuranceDialog(\'' . $res->mb_number . '\')"><i class="fa fa-plus"></i> Pay Labour Fee</button></li>
                        </ul>
+                       
                       
                       </div>';
                     }
