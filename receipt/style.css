@@ -2,41 +2,41 @@ body {
   margin: 0px;
   padding: 0px;
   font-family: Poppins, sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .page {
   display: block;
   margin: 20px auto;
-  width: 8.3in;
-  height: 5.8in;
-  border: 2px solid #000;
+  width: 8.27in; /* A4 width */
+  height: 11.69in; /* A4 height */
+  border: 1px solid #000;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 .header {
   display: flex;
   width: 100%;
-  height: 1.3in;
+  height: 1.5in;
   align-items: center;
-  justify-content: center;
-  border-bottom: 2px solid #000;
+  justify-content: space-between;
+  border-bottom: 1px solid #000;
+  padding: 10px 0;
 }
 .heading {
-  margin-right: 20px;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: bold;
   text-align: center;
   flex: 1;
 }
 .heading span {
-  padding: 10px;
+  padding: 10px 20px;
   border: 2px dashed #000;
   border-radius: 10px;
 }
 .qr {
-  heaight: 1in;
-  width: 1in;
-  margin-left: 20px;
-  margin-right: 20px;
+  height: 1.2in;
+  width: 1.2in;
+  margin-right: 30px;
 }
 .qr img {
   width: 100%;
@@ -44,15 +44,15 @@ body {
 }
 .logo {
   width: 2.5in;
+  margin-left: 30px;
 }
 .logo img {
   width: 100%;
   height: auto;
-  margin-left: 0.2in;
 }
 
 .data {
-  padding: 20px;
+  padding: 30px;
 }
 
 .row {
@@ -61,28 +61,63 @@ body {
 }
 .row .col {
   width: 33%;
-  margin: 1px;
+  margin: 5px;
 }
 .col .label {
-  background-color: #dddddd;
-  padding: 5px;
+  background-color: #f0f0f0;
+  padding: 8px;
   font-weight: bold;
+  border-radius: 4px 4px 0 0;
 }
 .col .value {
-  padding: 5px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
 }
 .col.col-full {
   width: 100%;
 }
 
+table {
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
+table th {
+  background-color: #f0f0f0;
+  padding: 10px;
+}
+
+table td {
+  padding: 10px;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.english, .arabic {
+  margin-top: 15px;
+  font-style: italic;
+  color: #555;
+}
+
 @media print {
-  .page.no-print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .page {
     margin: 0;
     padding: 0;
     border: none;
     width: 100%;
     height: auto;
+    box-shadow: none;
   }
+  
   .logo.no-print {
     visibility: hidden;
   }

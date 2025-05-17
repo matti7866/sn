@@ -111,10 +111,13 @@ if(isset($_POST['INSERT'])){
         $selectQuery = $pdo->prepare("SELECT customer.customer_name, ticket.passenger_name,ticket.Pnr,
         IFNULL(ticket.ticketNumber,0) AS ticketNumber,f.airport_code as depature, t.airport_code AS arrival, 
         DATE_FORMAT(DATE(ticket.date_of_travel),'%d-%b-%Y') dateofTravel, ticket.datetime AS dt,
-        ticket.sale, currency.currencyName , supplier.supp_name AS supplierName,ticket.remarks FROM ticket 
+        ticket.sale, currency.currencyName, supplier.supp_name AS supplierName, ticket.remarks, ticket.flight_number,
+        ticket.return_flight_number, ticket.departure_time, ticket.arrival_time, ticket.return_departure_time,
+        ticket.return_arrival_time, DATE_FORMAT(DATE(ticket.return_date),'%d-%b-%Y') AS dateofReturn, ticket.Flight_type
+        FROM ticket 
         INNER JOIN customer ON customer.customer_id = ticket.customer_id INNER JOIN airports AS f ON f.airport_id = 
         ticket.from_id INNER JOIN airports AS t ON t.airport_id = ticket.to_id INNER JOIN currency ON currency.currencyID
-         = ticket.currencyID INNER JOIN supplier ON supplier.supp_id =  ticket.supp_id WHERE DATE(ticket.datetime) =
+         = ticket.currencyID INNER JOIN supplier ON supplier.supp_id = ticket.supp_id WHERE DATE(ticket.datetime) =
         CURRENT_DATE() ORDER BY dt DESC");
         $selectQuery->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -156,15 +159,19 @@ if(isset($_POST['INSERT'])){
                 if($image == ''){
                     $sql = "INSERT INTO `ticket` (`ticketNumber`,`Pnr`, `customer_id`, `passenger_name`, 
                     `date_of_travel`,`return_date`, `from_id`, `to_id`, `sale`,`currencyID`, `staff_id`, `supp_id`, `net_price`,
-                    `net_CurrencyID`,`branchID`,`remarks`)
+                    `net_CurrencyID`,`branchID`,`remarks`,`flight_number`,`return_flight_number`,`departure_time`,`arrival_time`,
+                    `return_departure_time`,`return_arrival_time`,`Flight_type`)
                     VALUES (:ticketNumber,:pnr, :customer_id, :passenger_name,:date_of_travel,:return_date,
-                    :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:branchID,:remarks)";
+                    :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:branchID,:remarks,:flight_number,
+                    :return_flight_number,:departure_time,:arrival_time,:return_departure_time,:return_arrival_time,:Flight_type)";
                 }else{
                     $sql = "INSERT INTO `ticket` (`ticketNumber`,`Pnr`, `customer_id`, `passenger_name`, 
                     `date_of_travel`,`return_date`, `from_id`, `to_id`, `sale`,`currencyID`, `staff_id`, `supp_id`, `net_price`,
-                    `net_CurrencyID`,`ticketCopy`,`branchID`,`remarks`)
+                    `net_CurrencyID`,`ticketCopy`,`branchID`,`remarks`,`flight_number`,`return_flight_number`,`departure_time`,`arrival_time`,
+                    `return_departure_time`,`return_arrival_time`,`Flight_type`)
                     VALUES (:ticketNumber,:pnr, :customer_id, :passenger_name,:date_of_travel,:return_date,
-                    :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:ticketCopy,:branchID,:remarks)";
+                    :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:ticketCopy,:branchID,:remarks,:flight_number,
+                    :return_flight_number,:departure_time,:arrival_time,:return_departure_time,:return_arrival_time,:Flight_type)";
                 }
                 $stmt = $pdo->prepare($sql);
                 // bind parameters to statement
@@ -184,6 +191,13 @@ if(isset($_POST['INSERT'])){
                 $stmt->bindParam(':net_CurrencyID', $decodenetPriceCurrencyArr[$i]);
                 $stmt->bindParam(':branchID', $branchID);
                 $stmt->bindParam(':remarks', $_POST['remarks']);
+                $stmt->bindParam(':flight_number', $_POST['flight_number']);
+                $stmt->bindParam(':return_flight_number', $_POST['return_flight_number']);
+                $stmt->bindParam(':departure_time', $_POST['departure_time']);
+                $stmt->bindParam(':arrival_time', $_POST['arrival_time']);
+                $stmt->bindParam(':return_departure_time', $_POST['return_departure_time']);
+                $stmt->bindParam(':return_arrival_time', $_POST['return_arrival_time']);
+                $stmt->bindValue(':Flight_type', $_POST['Flight_type']);
                 if($image != ''){
                     $stmt->bindParam(':ticketCopy', $image);
                 }
@@ -223,16 +237,19 @@ if(isset($_POST['INSERT'])){
                     if($image == ''){
                         $sql = "INSERT INTO `ticket` (`ticketNumber`,`Pnr`, `customer_id`, `passenger_name`, 
                         `date_of_travel`,`return_date`, `from_id`, `to_id`, `sale`,`currencyID`, `staff_id`, `supp_id`, 
-                        `net_price`,`net_CurrencyID`,`branchID`,`remarks`)
+                        `net_price`,`net_CurrencyID`,`branchID`,`remarks`,`flight_number`,`return_flight_number`,`departure_time`,`arrival_time`,
+                        `return_departure_time`,`return_arrival_time`,`Flight_type`)
                         VALUES (:ticketNumber,:pnr, :customer_id, :passenger_name,:date_of_travel,:return_date,
-                        :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:branchID,:remarks)";
+                        :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:branchID,:remarks,:flight_number,
+                        :return_flight_number,:departure_time,:arrival_time,:return_departure_time,:return_arrival_time,:Flight_type)";
                     }else{
                         $sql = "INSERT INTO `ticket` (`ticketNumber`,`Pnr`, `customer_id`, `passenger_name`, 
                         `date_of_travel`,`return_date`, `from_id`, `to_id`, `sale`,`currencyID`, `staff_id`, `supp_id`, 
-                        `net_price`,`net_CurrencyID`,ticketCopy,`branchID`,`remarks`)
+                        `net_price`,`net_CurrencyID`,ticketCopy,`branchID`,`remarks`,`flight_number`,`return_flight_number`,`departure_time`,`arrival_time`,
+                        `return_departure_time`,`return_arrival_time`,`Flight_type`)
                         VALUES (:ticketNumber,:pnr, :customer_id, :passenger_name,:date_of_travel,:return_date,
                         :from_id,:to_id,:sale,:currencyID,:staff_id,:supp_id,:net_price,:net_CurrencyID,:ticketCopy,:branchID,
-                        :remarks)";
+                        :remarks,:flight_number,:return_flight_number,:departure_time,:arrival_time,:return_departure_time,:return_arrival_time,:Flight_type)";
                     }
                     // create prepared statement
                     
@@ -254,6 +271,13 @@ if(isset($_POST['INSERT'])){
                     $stmt->bindParam(':net_CurrencyID', $decodenetPriceCurrencyArr[$i]);
                     $stmt->bindParam(':branchID', $branchID);
                     $stmt->bindParam(':remarks', $_POST['remarks']);
+                    $stmt->bindParam(':flight_number', $_POST['flight_number']);
+                    $stmt->bindParam(':return_flight_number', $_POST['return_flight_number']);
+                    $stmt->bindParam(':departure_time', $_POST['departure_time']);
+                    $stmt->bindParam(':arrival_time', $_POST['arrival_time']);
+                    $stmt->bindParam(':return_departure_time', $_POST['return_departure_time']);
+                    $stmt->bindParam(':return_arrival_time', $_POST['return_arrival_time']);
+                    $stmt->bindValue(':Flight_type', $_POST['Flight_type']);
                     if($image != ''){
                         $stmt->bindParam(':ticketCopy', $image);
                     }

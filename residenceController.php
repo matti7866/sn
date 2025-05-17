@@ -19,7 +19,7 @@ if ($select == 0) {
 }
 
 if (isset($_POST['Select_Customer'])) {
-    $selectQuery = $pdo->prepare("SELECT * FROM `customer` ORDER BY customer_name ASC ");
+    $selectQuery = $pdo->prepare("SELECT customer_id, customer_name, customer_ref FROM `customer` ORDER BY customer_name ASC ");
     $selectQuery->execute();
     /* Fetch all of the remaining rows in the result set */
     $supplier = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
@@ -1371,9 +1371,9 @@ if (isset($_POST['Select_Customer'])) {
         $status = 1; // Active by default
         
         // Insert customer with all required fields from manageCustomerController.php
-        $sql = "INSERT INTO `customer`(`customer_name`, `customer_phone`, `customer_whatsapp`, 
+        $sql = "INSERT INTO `customer`(`customer_name`, `customer_ref`, `customer_phone`, `customer_whatsapp`, 
                 `customer_address`, `customer_email`, `cust_password`, `status`, `affliate_supp_id`) 
-                VALUES (:customer_name, :customer_phone, :customer_whatsapp, 
+                VALUES (:customer_name, :customer_ref, :customer_phone, :customer_whatsapp, 
                 :customer_address, :customer_email, :cust_password, :status, :affliate_supp_id)";
         
         // Create prepared statement
@@ -1381,6 +1381,7 @@ if (isset($_POST['Select_Customer'])) {
         
         // Bind parameters
         $stmt->bindParam(':customer_name', $_POST['CustomerName']);
+        $stmt->bindParam(':customer_ref', $_POST['CustomerRef']);
         $stmt->bindParam(':customer_phone', $_POST['CustomerPhone']);
         $stmt->bindParam(':customer_whatsapp', $_POST['CustomerPhone']); // Use phone as whatsapp if not specified
         $stmt->bindParam(':customer_address', $_POST['CustomerAddress']);

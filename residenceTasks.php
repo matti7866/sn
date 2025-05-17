@@ -120,7 +120,7 @@ $where = '';
 if ($s == '1a') {
   $where = " AND completedStep = 2 AND offerLetterStatus = 'submitted' ";
 } elseif ($s == '4a') {
-  $where = " AND completedStep = 5 AND eVisaStatus = 'submitted' ";
+  $where = " AND completedStep = 5 AND (eVisaStatus = 'submitted' OR eVisaStatus = 'rejected') ";
 } elseif ($s == '2') {
   $where = " AND completedStep = 2 AND offerLetterStatus = 'accepted'";
 } elseif ($s == '5') {
@@ -272,7 +272,7 @@ $suppliers = $suppliersQuery->fetchAll(\PDO::FETCH_ASSOC);
 
                     if ($s == '10') {
                       if ($res->tawjeeh_charge == 0) {
-                        $actionButtons .= '<button class="btn btn-warning btn-sm btn-setTawjeeh" data-id="' . $res->residenceID . '">Tawjeeh</button> ';
+                        $actionButtons .= '<button class="btn btn-warning btn-sm btn-setTawjeeh" data-id="' . $res->residenceID . '">Tawjeeh</button> ';
                       } else {
                         $actionButtons .= "<div>Tawjeeh: " . number_format($res->tawjeeh_charge, 0) . "</div>";
                       }
@@ -359,6 +359,7 @@ $suppliers = $suppliersQuery->fetchAll(\PDO::FETCH_ASSOC);
                       }
                       $mohreStatus .= '<div style="text-wrap:wrap;">';
                       $mohreStatus .= '<strong>MOHRE Status: </strong>' . ($res->mb_number == '' ? '<string class="text-danger">Provide MB Number</string>' : '<span class="text-primary">' . $res->mohreStatus . '</span>');
+                      $mohreStatus .= $res->eVisaStatus == 'rejected' ? '<br /><span class="badge bg-danger">E-Visa Rejected</span>' : '';
                       $mohreStatus .= '</div>';
                     }
 
@@ -430,7 +431,7 @@ $suppliers = $suppliersQuery->fetchAll(\PDO::FETCH_ASSOC);
   </div>
 
   <div class="modal fade" id="modalAttachments" role="dialog" aria-labelledby="" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content">
         <div class="modal-header bg-dark">
           <h3 class="modal-title text-white" id="exampleModalLabel"><b><i>Employee Attachments</i></b></h3>
@@ -1492,6 +1493,8 @@ $suppliers = $suppliersQuery->fetchAll(\PDO::FETCH_ASSOC);
           success: function(res) {
             if (res.status == 'success') {
               $('#modalAttachmentsBody').html(res.html);
+              // Initialize any tooltips or popovers if needed
+              $('[data-bs-toggle="tooltip"]').tooltip();
             } else {
               $('#message').html('<div class="alert alert-danger">' + res.message + '</div>');
             }

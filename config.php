@@ -1,0 +1,4 @@
+<?php
+define('PIXLR_API_KEY', '68082214e08e9d3a6d39153b');
+define('PIXLR_API_SECRET', '5ba2e3f711b340639654990df7081375');
+?>

@@ -24,7 +24,7 @@ include 'header.php';
         margin-left: 10px;
         color: #17a2b8;
     }
-    
+
     /* Ensure helper text is always visible */
     .text-muted {
         display: block !important;
@@ -57,6 +57,20 @@ $stmt = $pdo->prepare("
 $stmt->bindParam(':id', $_GET['id']);
 $stmt->execute();
 $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+$res = null;
+
+if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
+    $sql = "SELECT * FROM `residence` WHERE `residenceID` = :id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':id', $_GET['oldID']);
+    $stmt->execute();
+    $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+    // echo '<pre>';
+    // print_r($res);
+    // echo '</pre>';
+}
+
 ?>
 <div class="container-fluid">
     <div class="row">
@@ -94,6 +108,12 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                     <div class="col-12">
                                         <h5 class="text-primary mb-3"><i class="fa fa-edit"></i> Manual Entry Information</h5>
                                     </div>
+
+                                    <?php if ($res): ?>
+                                        <div class="col-lg-12">
+                                            <h3 class="text-danger">Renewal Residence Old File ID : <?php echo $res['residenceID']; ?> (<?php echo $res['passenger_name'] ?>)</h3>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="col-lg-3">
                                         <label for="staticEmail" class="col-form-label text-dark">Customer:</label>
                                         <div class="d-flex">
@@ -105,7 +125,7 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                     </div>
                                     <div class="col-lg-3">
                                         <label for="staticEmail" class="col-form-label text-dark">Sale price:</label>
-                                        <input type="number" class="form-control" name="sale_amount" id="sale_amount" placeholder="Enter Sale Amount" />
+                                        <input type="number" value="<?php echo isset($res['sale_price']) ? $res['sale_price'] : ''; ?>" class="form-control" name="sale_amount" id="sale_amount" placeholder="Enter Sale Amount" />
                                     </div>
                                     <div class="col-lg-2">
                                         <label for="staticEmail" class="col-form-label text-dark">Currency:</label>
@@ -115,28 +135,31 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                         <label for="insideOutside" class="col-form-label text-dark">Inside/Outside <span class="text-danger">*</span></label>
                                         <select name="insideOutside" id="insideOutside" class="form-select">
                                             <option value="">Choose</option>
-                                            <option value="inside">Inside</option>
+                                            <option value="inside" <?php echo isset($res) ? 'selected' : ''; ?>>Inside</option>
                                             <option value="outside">Outside</option>
                                         </select>
                                     </div>
                                     <div class="col-md-2">
                                         <label for="staticEmail" class="col-form-label text-dark">UID</label>
-                                        <input type="text" class="form-control" id="uid" name="uid" placeholder="UID">
+                                        <input type="text" value="<?php echo isset($res['uid']) ? $res['uid'] : ''; ?>" class="form-control" id="uid" name="uid" placeholder="UID">
                                         <input type="hidden" id="visaType" name="visaType" value="17" />
+
+                                        <input type="hidden" id="residenceID" name="residenceID" value="<?php echo isset($res['residenceID']) ? $res['residenceID'] : ''; ?>" />
+                                        <input type="hidden" id="resType" name="resType" value="<?php echo isset($res) ? 'renew' : 'new'; ?>" />
                                     </div>
                                 </div>
-                                
+
                                 <div class="row mt-2">
                                     <div class="col-lg-3">
                                         <label for="staticEmail" class="col-form-label text-dark">Salary:</label>
-                                        <input type="number" class="form-control" placeholder="Salary Amount" name="salary_amount" id="salary_amount">
+                                        <input type="number" class="form-control" placeholder="Salary Amount" name="salary_amount" id="salary_amount" value="<?php echo isset($res['salary_amount']) ? $res['salary_amount'] : ''; ?>">
                                     </div>
                                     <div class="col-lg-3">
                                         <label for="staticEmail" class="col-form-label text-dark">Position:</label>
                                         <select class="form-control js-example-basic-single" onchange="positionFun()" style="width:100%" id="position" name="position" spry:default="select one"></select>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Auto-filled Passport Fields -->
                                 <div class="row mt-4">
                                     <div class="col-12">
@@ -144,7 +167,7 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                     </div>
                                     <div class="col-lg-3">
                                         <label for="staticEmail" class="col-form-label text-dark">Passenger Name:</label>
-                                        <input class="form-control" name="passengerName" id="passengerName" placeholder="Passenger Name" />
+                                        <input class="form-control" name="passengerName" id="passengerName" placeholder="Passenger Name" value="<?php echo isset($res['passenger_name']) ? $res['passenger_name'] : ''; ?>" />
                                     </div>
                                     <div class="col-lg-3">
                                         <label for="staticEmail" class="col-form-label text-dark">Nationality:</label>
@@ -152,26 +175,26 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                     </div>
                                     <div class="col-md-2">
                                         <label class="col-form-label text-dark" for="passportNumber">Passport # <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="passportNumber" name="passportNumber" placeholder="Passport Number">
+                                        <input type="text" class="form-control" id="passportNumber" name="passportNumber" placeholder="Passport Number" value="<?php echo isset($res['passportNumber']) ? $res['passportNumber'] : ''; ?>">
                                     </div>
                                     <div class="col-md-2">
                                         <label class="col-form-label text-dark" for="passportExpiryDate">Passport Expiry Date <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="passportExpiryDate" name="passportExpiryDate">
+                                        <input type="text" class="form-control" id="passportExpiryDate" name="passportExpiryDate" value="<?php echo isset($res['passportExpiryDate']) ? $res['passportExpiryDate'] : ''; ?>">
                                     </div>
                                     <div class="col-md-2">
                                         <label for="gender" class="col-form-label text-dark">Gender <span class="text-danger">*</span></label>
                                         <select class="form-select" style="width:100%" id="gender" name="gender">
                                             <option value="">Choose</option>
-                                            <option value="male">Male</option>
-                                            <option value="female">Female</option>
+                                            <option value="male" <?php echo isset($res['gender']) && $res['gender'] == 'male' ? 'selected' : ''; ?>>Male</option>
+                                            <option value="female" <?php echo isset($res['gender']) && $res['gender'] == 'female' ? 'selected' : ''; ?>>Female</option>
                                         </select>
                                     </div>
                                     <div class="col-md-2">
                                         <label for="dob" class="col-form-label text-dark">Date of Birth <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="dob" name="dob">
+                                        <input type="text" class="form-control" id="dob" name="dob" value="<?php echo isset($res['dob']) ? $res['dob'] : ''; ?>">
                                     </div>
                                 </div>
-                                
+
                                 <!-- File Uploads -->
                                 <div class="row mt-4">
                                     <div class="col-12">
@@ -752,7 +775,7 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-        
+
         <!-- Add Customer Modal -->
         <div class="modal" id="addCustomerModal" tabindex="-1" role="dialog" aria-labelledby="addCustomerModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -770,6 +793,12 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                     <label for="customerName" class="col-sm-3 col-form-label"><i class="fa fa-user"></i> Name:</label>
                                     <div class="col-sm-9">
                                         <input type="text" class="form-control" id="customerName" name="CustomerName" placeholder="Enter customer name" />
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-3">
+                                    <label for="customerRef" class="col-sm-3 col-form-label"><i class="fa fa-hashtag"></i> Reference:</label>
+                                    <div class="col-sm-9">
+                                        <input type="text" class="form-control" id="customerRef" name="CustomerRef" placeholder="Enter customer reference" />
                                     </div>
                                 </div>
                                 <div class="form-group row mb-3">
@@ -800,7 +829,7 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-        
+
         <?php include 'footer.php'; ?>
         <script src="residencePassport.js"></script>
         <script>
@@ -828,6 +857,12 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                     var stp = location.search.split('&stp=')[1];
                     $('#ComStpID').val(stp);
                     setCurrentStep(stp);
+
+                    //some additional steps
+                    getCustomer(null, <?php echo isset($res['customer_id']) ? $res['customer_id'] : ''; ?>);
+                    getNationalities(null, <?php echo isset($res['Nationality']) ? $res['Nationality'] : ''; ?>);
+                    //getVisaTypes('all', null);
+                    getCurrencies('saleCur', null);
                 } else {
                     $('.stepper-container a')[0].classList.add('active');
                     $('#step1').removeClass('d-none');
@@ -875,8 +910,13 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                             $('#customer_id').empty();
                             $('#customer_id').append("<option value='-1'>--Customer--</option>");
                             for (var i = 0; i < customer.length; i++) {
+                                // Check if customer_ref exists and is not null or empty
+                                var displayName = customer[i].customer_name;
+                                if (customer[i].customer_ref && customer[i].customer_ref.trim() !== '') {
+                                    displayName += ' - ' + customer[i].customer_ref;
+                                }
                                 $('#customer_id').append("<option value='" + customer[i].customer_id + "'>" +
-                                    customer[i].customer_name + "</option>");
+                                    displayName + "</option>");
                             }
                         } else {
                             $('#customer_id').empty();
@@ -888,8 +928,13 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                                 } else {
                                     selected = '';
                                 }
+                                // Check if customer_ref exists and is not null or empty
+                                var displayName = customer[i].customer_name;
+                                if (customer[i].customer_ref && customer[i].customer_ref.trim() !== '') {
+                                    displayName += ' - ' + customer[i].customer_ref;
+                                }
                                 $('#customer_id').append("<option " + selected + "  value='" + customer[i].customer_id + "'>" +
-                                    customer[i].customer_name + "</option>");
+                                    displayName + "</option>");
                             }
                         }
                     },
@@ -1126,10 +1171,12 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                         for (var i = 0; i < positions.length; i++) {
                             if (i == 0 || positions[i].PositionID == positions[i].position_id) {
                                 selected = 'selected';
+                            } else if (positions[i].PositionID == <?php echo isset($res['positionID']) ? $res['positionID'] : "0"; ?>) {
+                                selected = 'selected';
                             } else {
                                 selected = '';
                             }
-                            $('#position').append("<option " + selected + "  value='" + positions[i].position_id + "'>" +
+                            $('#position').append("<option " + selected + "   value='" + positions[i].position_id + "'>" +
                                 positions[i].posiiton_name + "</option>");
                         }
                     },
@@ -1141,20 +1188,20 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                 var GRID = $('#GRID').val();
                 if (type == "completed") {
                     if (GRID == "") {
-                        notify('Validation Error!', 'Something went wrong!', 'error');
+                        notify('Validation Error!', 'Something went wrong! x1', 'error');
                         return;
                     }
                 }
                 var type = $('.stepper-container a')[0].classList[1];
                 if (type != "completed" || type != "active") {
                     if (type == "") {
-                        notify('Validation Error!', 'Something went wrong!', 'error');
+                        notify('Validation Error!', 'Something went wrong! x2', 'error');
                         return;
                     }
                 }
                 if (type == "active") {
                     if (GRID != "") {
-                        notify('Validation Error!', 'Something went wrong!', 'error');
+                        notify('Validation Error!', 'Something went wrong! x3', 'error');
                         return;
                     }
                 }
@@ -1395,7 +1442,7 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                 var GRID = $('#GRID').val();
                 $('#offerLetterFile').val('');
                 if (GRID == "") {
-                    notify('Validation Error!', 'Something went wrong!', 'error');
+                    notify('Validation Error!', 'Something went wrong! 1', 'error');
                     return;
                 }
                 var getSalaryAndCostAmounts = "getSalaryAndCostAmounts";
@@ -3200,591 +3247,600 @@ $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
                 });
             });
         </script>
-        
-<!-- Scripts placed at end of body for proper DOM loading -->
-<script>
-    console.log('Debug: Before loading residencePassport.js');
-</script>
-<script src="residencePassport.js"></script>
-<script>
-    // Initialize passport processing when the document is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Debug: Document ready, initializing passport processing');
-        
-        // Get the file input
-        const fileInput = document.getElementById('basicInfoFile');
-        console.log('Debug: File input found:', fileInput);
-        
-        // Set up the Use Test Data button
-        const useTestDataBtn = document.getElementById('useTestDataBtn');
-        if (useTestDataBtn) {
-            useTestDataBtn.addEventListener('click', function() {
-                console.log('Debug: Using test data button clicked');
-                
-                // Test data to fill the form
-                const testData = {
-                    passport_number: 'AB1234567',
-                    country_code: 'USA',
-                    surname: 'DOE',
-                    given_names: 'JOHN',
-                    nationality: 'AFG', // Change to Afghanistan to test
-                    dob: '01/01/1980',
-                    gender: 'M',
-                    expiry_date: '01/01/2030',
-                    name: 'JOHN DOE',
-                    date_of_birth: '01/01/1980'
-                };
-                
-                // Populate the form fields with test data
-                const fields = {
-                    'passportNumber': testData.passport_number || '',
-                    'passportExpiryDate': testData.expiry_date || '',
-                    'dob': testData.date_of_birth || testData.dob || '',
-                    'gender': (testData.gender || '').toLowerCase() === 'm' ? 'male' : 
-                             (testData.gender || '').toLowerCase() === 'f' ? 'female' : '',
-                    // Create full name by combining given_names and surname
-                    'passengerName': ((testData.given_names || '') + ' ' + (testData.surname || '')).trim() || testData.name || ''
-                };
-                
-                console.log('Debug: Populating with test data:', fields);
-                
-                for (const [id, value] of Object.entries(fields)) {
-                    const field = document.getElementById(id);
-                    if (field && value) {
-                        field.value = value;
-                        console.log('Debug: Set field', id, 'to', value);
-                        
-                        // Trigger change event
-                        const event = new Event('change', { bubbles: true });
-                        field.dispatchEvent(event);
-                    } else {
-                        console.log('Debug: Field not found or no value:', id, 
-                                    field ? 'element exists' : 'element not found', 
-                                    value ? 'has value' : 'no value');
-                    }
-                }
-                
-                // Handle nationality dropdown separately
-                if (testData.nationality) {
-                    const nationalityField = document.getElementById('nationality');
-                    if (nationalityField) {
-                        console.log('Looking for nationality match for:', testData.nationality);
-                        
-                        // Country code mapping to full names
-                        const countryCodeMap = {
-                            'AFG': 'Afghanistan',
-                            'USA': 'United States',
-                            'GBR': 'United Kingdom',
-                            'CAN': 'Canada',
-                            'AUS': 'Australia',
-                            'IND': 'India',
-                            'PAK': 'Pakistan',
-                            'ARE': 'United Arab Emirates',
-                            'IRN': 'Iran'
-                            // Add more as needed
+
+        <!-- Scripts placed at end of body for proper DOM loading -->
+        <script>
+            console.log('Debug: Before loading residencePassport.js');
+        </script>
+        <script src="residencePassport.js"></script>
+        <script>
+            // Initialize passport processing when the document is ready
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Debug: Document ready, initializing passport processing');
+
+                // Get the file input
+                const fileInput = document.getElementById('basicInfoFile');
+                console.log('Debug: File input found:', fileInput);
+
+                // Set up the Use Test Data button
+                const useTestDataBtn = document.getElementById('useTestDataBtn');
+                if (useTestDataBtn) {
+                    useTestDataBtn.addEventListener('click', function() {
+                        console.log('Debug: Using test data button clicked');
+
+                        // Test data to fill the form
+                        const testData = {
+                            passport_number: 'AB1234567',
+                            country_code: 'USA',
+                            surname: 'DOE',
+                            given_names: 'JOHN',
+                            nationality: 'AFG', // Change to Afghanistan to test
+                            dob: '01/01/1980',
+                            gender: 'M',
+                            expiry_date: '01/01/2030',
+                            name: 'JOHN DOE',
+                            date_of_birth: '01/01/1980'
                         };
-                        
-                        // Convert country code to full name if available
-                        const fullCountryName = countryCodeMap[testData.nationality] || testData.nationality;
-                        console.log('Mapped country code', testData.nationality, 'to:', fullCountryName);
-                        
-                        // Try multiple matching strategies
-                        let found = false;
-                        
-                        // First try: Exact match on full name
-                        for (let i = 0; i < nationalityField.options.length; i++) {
-                            const option = nationalityField.options[i];
-                            if (option.text.toUpperCase() === fullCountryName.toUpperCase()) {
-                                nationalityField.selectedIndex = i;
-                                console.log('Found exact match for nationality:', option.text);
-                                found = true;
-                                break;
+
+                        // Populate the form fields with test data
+                        const fields = {
+                            'passportNumber': testData.passport_number || '',
+                            'passportExpiryDate': testData.expiry_date || '',
+                            'dob': testData.date_of_birth || testData.dob || '',
+                            'gender': (testData.gender || '').toLowerCase() === 'm' ? 'male' : (testData.gender || '').toLowerCase() === 'f' ? 'female' : '',
+                            // Create full name by combining given_names and surname
+                            'passengerName': ((testData.given_names || '') + ' ' + (testData.surname || '')).trim() || testData.name || ''
+                        };
+
+                        console.log('Debug: Populating with test data:', fields);
+
+                        for (const [id, value] of Object.entries(fields)) {
+                            const field = document.getElementById(id);
+                            if (field && value) {
+                                field.value = value;
+                                console.log('Debug: Set field', id, 'to', value);
+
+                                // Trigger change event
+                                const event = new Event('change', {
+                                    bubbles: true
+                                });
+                                field.dispatchEvent(event);
+                            } else {
+                                console.log('Debug: Field not found or no value:', id,
+                                    field ? 'element exists' : 'element not found',
+                                    value ? 'has value' : 'no value');
                             }
                         }
-                        
-                        // Second try: Contains match on full name
-                        if (!found) {
-                            for (let i = 0; i < nationalityField.options.length; i++) {
-                                const option = nationalityField.options[i];
-                                if (option.text.toUpperCase().includes(fullCountryName.toUpperCase()) ||
-                                    fullCountryName.toUpperCase().includes(option.text.toUpperCase())) {
-                                    nationalityField.selectedIndex = i;
-                                    console.log('Found partial match for nationality:', option.text);
-                                    found = true;
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        // If found, trigger change event
-                        if (found) {
-                            const event = new Event('change', { bubbles: true });
-                            nationalityField.dispatchEvent(event);
-                        } else {
-                            console.log('Could not find matching nationality in dropdown');
-                        }
-                    }
-                }
-            });
-        }
-        
-        if (fileInput) {
-            // Remove any existing event listeners
-            const newFileInput = fileInput.cloneNode(true);
-            fileInput.parentNode.replaceChild(newFileInput, fileInput);
-            
-            // Add direct event listener for testing
-            newFileInput.addEventListener('change', function(e) {
-                console.log('Debug: File input change event triggered');
-                console.log('Debug: File selected:', this.files[0]);
-                console.log('Debug: File details:', {
-                    name: this.files[0].name,
-                    size: this.files[0].size,
-                    type: this.files[0].type
-                });
-                
-                // Show processing indicator
-                const processingIndicator = document.getElementById('passportProcessingIndicator');
-                if (processingIndicator) {
-                    processingIndicator.style.display = 'inline-block';
-                }
-                
-                // Create FormData
-                const formData = new FormData();
-                formData.append('basicInfoFile', this.files[0]);
-                
-                // Log FormData contents
-                console.log('Debug: FormData contents:');
-                for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
-                }
-                
-                // Send to processPassport.php
-                fetch('processPassport.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    console.log('Debug: Response status:', response.status);
-                    console.log('Debug: Response headers:', Object.fromEntries(response.headers));
-                    return response.text().then(text => {
-                        console.log('Debug: Raw response:', text);
-                        try {
-                            // Check if the response contains HTML tags (error messages)
-                            if (text.includes('<br />') || text.includes('<b>')) {
-                                console.error('Debug: Response contains HTML error messages:', text);
-                                // Extract the JSON part if possible
-                                const jsonStartPos = text.indexOf('{');
-                                const jsonEndPos = text.lastIndexOf('}') + 1;
-                                if (jsonStartPos !== -1 && jsonEndPos !== -1) {
-                                    const jsonPart = text.substring(jsonStartPos, jsonEndPos);
-                                    console.log('Debug: Extracted JSON part:', jsonPart);
-                                    try {
-                                        return JSON.parse(jsonPart);
-                                    } catch (e) {
-                                        console.error('Debug: Failed to parse extracted JSON:', e);
-                                    }
-                                }
-                                
-                                // If JSON extraction failed, return a formatted error object
-                                return {
-                                    success: false,
-                                    data: {
-                                        extraction_error: 'Server encountered an error processing the image. Please try a different image file.'
-                                    },
-                                    error: 'PHP error occurred'
+
+                        // Handle nationality dropdown separately
+                        if (testData.nationality) {
+                            const nationalityField = document.getElementById('nationality');
+                            if (nationalityField) {
+                                console.log('Looking for nationality match for:', testData.nationality);
+
+                                // Country code mapping to full names
+                                const countryCodeMap = {
+                                    'AFG': 'Afghanistan',
+                                    'USA': 'United States',
+                                    'GBR': 'United Kingdom',
+                                    'CAN': 'Canada',
+                                    'AUS': 'Australia',
+                                    'IND': 'India',
+                                    'PAK': 'Pakistan',
+                                    'ARE': 'United Arab Emirates',
+                                    'IRN': 'Iran'
+                                    // Add more as needed
                                 };
-                            }
-                            
-                            return JSON.parse(text);
-                        } catch (e) {
-                            console.error('Debug: Failed to parse JSON:', e, text);
-                            throw new Error('Invalid JSON response');
-                        }
-                    });
-                })
-                .then(data => {
-                    console.log('Debug: Parsed response data:', data);
-                    if (data.success) {
-                        console.log('Debug: Processing successful, data:', data.data);
-                        
-                        // Check if extraction error exists
-                        const extractionError = data.data && data.data.extraction_error;
-                        if (extractionError) {
-                            console.log('Debug: Extraction error detected:', extractionError);
-                            
-                            // Show extraction error container
-                            const errorContainer = document.getElementById('extractionErrorContainer');
-                            const errorMessage = document.getElementById('extractionErrorMessage');
-                            
-                            if (errorContainer && errorMessage) {
-                                errorMessage.textContent = extractionError;
-                                errorContainer.style.display = 'block';
-                            }
-                            
-                            return; // Don't try to populate fields with empty data
-                        }
-                        
-                        // Auto-fill form fields
-                        if (data.data) {
-                            const fields = {
-                                'passportNumber': data.data.passport_number || '',
-                                'passportExpiryDate': data.data.expiry_date || '',
-                                'dob': data.data.date_of_birth || data.data.dob || '',
-                                'gender': (data.data.gender || '').toLowerCase() === 'm' ? 'male' : 
-                                         (data.data.gender || '').toLowerCase() === 'f' ? 'female' : '',
-                                // Create full name by combining given_names and surname
-                                'passengerName': ((data.data.given_names || '') + ' ' + (data.data.surname || '')).trim() || data.data.name || ''
-                            };
-                            
-                            console.log('Debug: Mapped field values:', fields);
-                            
-                            // Check if only surname was detected (no given names)
-                            if (data.data.surname && !data.data.given_names) {
-                                console.log('Debug: Only surname detected, no given names');
-                                // Show a discreet notification near the name field
-                                setTimeout(() => {
-                                    const nameField = document.getElementById('passengerName');
-                                    if (nameField && nameField.parentNode) {
-                                        // Add a small hint below the field
-                                        const hintEl = document.createElement('small');
-                                        hintEl.className = 'text-warning';
-                                        hintEl.style.display = 'block';
-                                        hintEl.textContent = 'Only surname detected. Please add the first name if available.';
-                                        
-                                        // Check if hint already exists
-                                        const existingHint = nameField.parentNode.querySelector('.text-warning');
-                                        if (!existingHint) {
-                                            nameField.parentNode.appendChild(hintEl);
-                                            
-                                            // Focus the field to prompt the user to edit
-                                            nameField.focus();
-                                            
-                                            // Set selection to beginning to make it easier to add first name
-                                            nameField.setSelectionRange(0, 0);
-                                            
-                                            // Remove the hint after 10 seconds
-                                            setTimeout(() => {
-                                                if (hintEl.parentNode) {
-                                                    hintEl.parentNode.removeChild(hintEl);
-                                                }
-                                            }, 10000);
-                                        }
+
+                                // Convert country code to full name if available
+                                const fullCountryName = countryCodeMap[testData.nationality] || testData.nationality;
+                                console.log('Mapped country code', testData.nationality, 'to:', fullCountryName);
+
+                                // Try multiple matching strategies
+                                let found = false;
+
+                                // First try: Exact match on full name
+                                for (let i = 0; i < nationalityField.options.length; i++) {
+                                    const option = nationalityField.options[i];
+                                    if (option.text.toUpperCase() === fullCountryName.toUpperCase()) {
+                                        nationalityField.selectedIndex = i;
+                                        console.log('Found exact match for nationality:', option.text);
+                                        found = true;
+                                        break;
                                     }
-                                }, 500);
-                            }
-                            
-                            for (const [id, value] of Object.entries(fields)) {
-                                const field = document.getElementById(id);
-                                if (field && value) {
-                                    field.value = value;
-                                    console.log('Debug: Set field', id, 'to', value);
-                                    
-                                    // Trigger change event
-                                    const event = new Event('change', { bubbles: true });
-                                    field.dispatchEvent(event);
-                                } else {
-                                    console.log('Debug: Field not found or no value:', id, field ? 'element exists' : 'element not found', value ? 'has value' : 'no value');
                                 }
-                            }
-                            
-                            // Handle nationality dropdown separately
-                            if (data.data.nationality || data.data.country_code) {
-                                const nationalityField = document.getElementById('nationality');
-                                if (nationalityField) {
-                                    // Use nationality if available, otherwise fallback to country_code
-                                    const nationalityValue = data.data.nationality || data.data.country_code;
-                                    console.log('Looking for nationality match for:', nationalityValue);
-                                    
-                                    // Country code mapping to full names
-                                    const countryCodeMap = {
-                                        'AFG': 'Afghanistan',
-                                        'USA': 'United States',
-                                        'GBR': 'United Kingdom',
-                                        'CAN': 'Canada',
-                                        'AUS': 'Australia',
-                                        'IND': 'India',
-                                        'PAK': 'Pakistan',
-                                        'ARE': 'United Arab Emirates',
-                                        'IRN': 'Iran',
-                                        'CHN': 'China',
-                                        'JPN': 'Japan',
-                                        'DEU': 'Germany',
-                                        'FRA': 'France',
-                                        'RUS': 'Russia',
-                                        'SAU': 'Saudi Arabia'
-                                        // Add more mappings as needed
-                                    };
-                                    
-                                    // Convert country code to full name if available
-                                    const countryCode = nationalityValue;
-                                    const fullCountryName = countryCodeMap[countryCode] || countryCode;
-                                    console.log('Mapped country code', countryCode, 'to:', fullCountryName);
-                                    
-                                    // Try to find the nationality in the dropdown
-                                    let found = false;
-                                    let selectedValue = null;
-                                    
-                                    // First try: Exact match on full name
+
+                                // Second try: Contains match on full name
+                                if (!found) {
                                     for (let i = 0; i < nationalityField.options.length; i++) {
                                         const option = nationalityField.options[i];
-                                        if (option.text.toUpperCase() === fullCountryName.toUpperCase()) {
-                                            selectedValue = option.value;
-                                            console.log('Found exact match for nationality:', option.text, 'with value:', selectedValue);
+                                        if (option.text.toUpperCase().includes(fullCountryName.toUpperCase()) ||
+                                            fullCountryName.toUpperCase().includes(option.text.toUpperCase())) {
+                                            nationalityField.selectedIndex = i;
+                                            console.log('Found partial match for nationality:', option.text);
                                             found = true;
                                             break;
                                         }
                                     }
-                                    
-                                    // Second try: Contains match on full name
-                                    if (!found) {
-                                        for (let i = 0; i < nationalityField.options.length; i++) {
-                                            const option = nationalityField.options[i];
-                                            if (option.text.toUpperCase().includes(fullCountryName.toUpperCase()) ||
-                                                fullCountryName.toUpperCase().includes(option.text.toUpperCase())) {
-                                                selectedValue = option.value;
-                                                console.log('Found partial match for nationality:', option.text, 'with value:', selectedValue);
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    
-                                    // If found, use Select2 to update the selection
-                                    if (found && selectedValue) {
-                                        console.log('Setting dropdown to value:', selectedValue);
-                                        
-                                        // Use Select2's method to update the selection if available
-                                        if (typeof $ !== 'undefined' && $(nationalityField).data('select2')) {
-                                            console.log('Using Select2 API to update selection');
-                                            $(nationalityField).val(selectedValue).trigger('change');
-                                        } else {
-                                            console.log('Using standard DOM to update selection');
-                                            nationalityField.value = selectedValue;
-                                            const event = new Event('change', { bubbles: true });
-                                            nationalityField.dispatchEvent(event);
-                                        }
-                                    } else {
-                                        console.log('Could not find matching nationality after all attempts, showing hint');
-                                        
-                                        // Add a hint to manually select nationality
-                                        setTimeout(() => {
-                                            if (nationalityField && nationalityField.parentNode) {
-                                                // Add a small hint below the field
-                                                const hintEl = document.createElement('small');
-                                                hintEl.className = 'text-warning';
-                                                hintEl.style.display = 'block';
-                                                hintEl.textContent = `Please select nationality manually (detected code: ${countryCode})`;
-                                                
-                                                // Check if hint already exists
-                                                const existingHint = nationalityField.parentNode.querySelector('.text-warning');
-                                                if (!existingHint) {
-                                                    nationalityField.parentNode.appendChild(hintEl);
-                                                    
-                                                    // Focus the field to prompt the user to edit
-                                                    nationalityField.focus();
-                                                    
-                                                    // Remove the hint after 10 seconds
-                                                    setTimeout(() => {
-                                                        if (hintEl.parentNode) {
-                                                            hintEl.parentNode.removeChild(hintEl);
-                                                        }
-                                                    }, 10000);
-                                                }
-                                            }
-                                        }, 700);
-                                    }
+                                }
+
+                                // If found, trigger change event
+                                if (found) {
+                                    const event = new Event('change', {
+                                        bubbles: true
+                                    });
+                                    nationalityField.dispatchEvent(event);
+                                } else {
+                                    console.log('Could not find matching nationality in dropdown');
                                 }
                             }
-                        } else {
-                            console.log('Debug: No data in response');
                         }
-                    } else {
-                        console.error('Debug: Processing failed:', data.error || 'Unknown error');
-                        
-                        // Check if there's an extraction error in the response data
-                        const extractionError = data.data && data.data.extraction_error;
-                        if (extractionError) {
-                            console.log('Debug: Extraction error detected in failure response:', extractionError);
-                            
-                            // Show extraction error container
-                            const errorContainer = document.getElementById('extractionErrorContainer');
-                            const errorMessage = document.getElementById('extractionErrorMessage');
-                            
-                            if (errorContainer && errorMessage) {
-                                errorMessage.textContent = extractionError;
-                                errorContainer.style.display = 'block';
-                            }
+                    });
+                }
+
+                if (fileInput) {
+                    // Remove any existing event listeners
+                    const newFileInput = fileInput.cloneNode(true);
+                    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+
+                    // Add direct event listener for testing
+                    newFileInput.addEventListener('change', function(e) {
+                        console.log('Debug: File input change event triggered');
+                        console.log('Debug: File selected:', this.files[0]);
+                        console.log('Debug: File details:', {
+                            name: this.files[0].name,
+                            size: this.files[0].size,
+                            type: this.files[0].type
+                        });
+
+                        // Show processing indicator
+                        const processingIndicator = document.getElementById('passportProcessingIndicator');
+                        if (processingIndicator) {
+                            processingIndicator.style.display = 'inline-block';
                         }
-                    }
-                })
-                .catch(error => {
-                    console.error('Debug: Error processing passport:', error);
-                })
-                .finally(() => {
-                    // Hide processing indicator
-                    if (processingIndicator) {
-                        processingIndicator.style.display = 'none';
-                    }
-                });
+
+                        // Create FormData
+                        const formData = new FormData();
+                        formData.append('basicInfoFile', this.files[0]);
+
+                        // Log FormData contents
+                        console.log('Debug: FormData contents:');
+                        for (let pair of formData.entries()) {
+                            console.log(pair[0] + ': ' + pair[1]);
+                        }
+
+                        // Send to processPassport.php
+                        fetch('processPassport.php', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => {
+                                console.log('Debug: Response status:', response.status);
+                                console.log('Debug: Response headers:', Object.fromEntries(response.headers));
+                                return response.text().then(text => {
+                                    console.log('Debug: Raw response:', text);
+                                    try {
+                                        // Check if the response contains HTML tags (error messages)
+                                        if (text.includes('<br />') || text.includes('<b>')) {
+                                            console.error('Debug: Response contains HTML error messages:', text);
+                                            // Extract the JSON part if possible
+                                            const jsonStartPos = text.indexOf('{');
+                                            const jsonEndPos = text.lastIndexOf('}') + 1;
+                                            if (jsonStartPos !== -1 && jsonEndPos !== -1) {
+                                                const jsonPart = text.substring(jsonStartPos, jsonEndPos);
+                                                console.log('Debug: Extracted JSON part:', jsonPart);
+                                                try {
+                                                    return JSON.parse(jsonPart);
+                                                } catch (e) {
+                                                    console.error('Debug: Failed to parse extracted JSON:', e);
+                                                }
+                                            }
+
+                                            // If JSON extraction failed, return a formatted error object
+                                            return {
+                                                success: false,
+                                                data: {
+                                                    extraction_error: 'Server encountered an error processing the image. Please try a different image file.'
+                                                },
+                                                error: 'PHP error occurred'
+                                            };
+                                        }
+
+                                        return JSON.parse(text);
+                                    } catch (e) {
+                                        console.error('Debug: Failed to parse JSON:', e, text);
+                                        throw new Error('Invalid JSON response');
+                                    }
+                                });
+                            })
+                            .then(data => {
+                                console.log('Debug: Parsed response data:', data);
+                                if (data.success) {
+                                    console.log('Debug: Processing successful, data:', data.data);
+
+                                    // Check if extraction error exists
+                                    const extractionError = data.data && data.data.extraction_error;
+                                    if (extractionError) {
+                                        console.log('Debug: Extraction error detected:', extractionError);
+
+                                        // Show extraction error container
+                                        const errorContainer = document.getElementById('extractionErrorContainer');
+                                        const errorMessage = document.getElementById('extractionErrorMessage');
+
+                                        if (errorContainer && errorMessage) {
+                                            errorMessage.textContent = extractionError;
+                                            errorContainer.style.display = 'block';
+                                        }
+
+                                        return; // Don't try to populate fields with empty data
+                                    }
+
+                                    // Auto-fill form fields
+                                    if (data.data) {
+                                        const fields = {
+                                            'passportNumber': data.data.passport_number || '',
+                                            'passportExpiryDate': data.data.expiry_date || '',
+                                            'dob': data.data.date_of_birth || data.data.dob || '',
+                                            'gender': (data.data.gender || '').toLowerCase() === 'm' ? 'male' : (data.data.gender || '').toLowerCase() === 'f' ? 'female' : '',
+                                            // Create full name by combining given_names and surname
+                                            'passengerName': ((data.data.given_names || '') + ' ' + (data.data.surname || '')).trim() || data.data.name || ''
+                                        };
+
+                                        console.log('Debug: Mapped field values:', fields);
+
+                                        // Check if only surname was detected (no given names)
+                                        if (data.data.surname && !data.data.given_names) {
+                                            console.log('Debug: Only surname detected, no given names');
+                                            // Show a discreet notification near the name field
+                                            setTimeout(() => {
+                                                const nameField = document.getElementById('passengerName');
+                                                if (nameField && nameField.parentNode) {
+                                                    // Add a small hint below the field
+                                                    const hintEl = document.createElement('small');
+                                                    hintEl.className = 'text-warning';
+                                                    hintEl.style.display = 'block';
+                                                    hintEl.textContent = 'Only surname detected. Please add the first name if available.';
+
+                                                    // Check if hint already exists
+                                                    const existingHint = nameField.parentNode.querySelector('.text-warning');
+                                                    if (!existingHint) {
+                                                        nameField.parentNode.appendChild(hintEl);
+
+                                                        // Focus the field to prompt the user to edit
+                                                        nameField.focus();
+
+                                                        // Set selection to beginning to make it easier to add first name
+                                                        nameField.setSelectionRange(0, 0);
+
+                                                        // Remove the hint after 10 seconds
+                                                        setTimeout(() => {
+                                                            if (hintEl.parentNode) {
+                                                                hintEl.parentNode.removeChild(hintEl);
+                                                            }
+                                                        }, 10000);
+                                                    }
+                                                }
+                                            }, 500);
+                                        }
+
+                                        for (const [id, value] of Object.entries(fields)) {
+                                            const field = document.getElementById(id);
+                                            if (field && value) {
+                                                field.value = value;
+                                                console.log('Debug: Set field', id, 'to', value);
+
+                                                // Trigger change event
+                                                const event = new Event('change', {
+                                                    bubbles: true
+                                                });
+                                                field.dispatchEvent(event);
+                                            } else {
+                                                console.log('Debug: Field not found or no value:', id, field ? 'element exists' : 'element not found', value ? 'has value' : 'no value');
+                                            }
+                                        }
+
+                                        // Handle nationality dropdown separately
+                                        if (data.data.nationality || data.data.country_code) {
+                                            const nationalityField = document.getElementById('nationality');
+                                            if (nationalityField) {
+                                                // Use nationality if available, otherwise fallback to country_code
+                                                const nationalityValue = data.data.nationality || data.data.country_code;
+                                                console.log('Looking for nationality match for:', nationalityValue);
+
+                                                // Country code mapping to full names
+                                                const countryCodeMap = {
+                                                    'AFG': 'Afghanistan',
+                                                    'USA': 'United States',
+                                                    'GBR': 'United Kingdom',
+                                                    'CAN': 'Canada',
+                                                    'AUS': 'Australia',
+                                                    'IND': 'India',
+                                                    'PAK': 'Pakistan',
+                                                    'ARE': 'United Arab Emirates',
+                                                    'IRN': 'Iran',
+                                                    'CHN': 'China',
+                                                    'JPN': 'Japan',
+                                                    'DEU': 'Germany',
+                                                    'FRA': 'France',
+                                                    'RUS': 'Russia',
+                                                    'SAU': 'Saudi Arabia'
+                                                    // Add more mappings as needed
+                                                };
+
+                                                // Convert country code to full name if available
+                                                const countryCode = nationalityValue;
+                                                const fullCountryName = countryCodeMap[countryCode] || countryCode;
+                                                console.log('Mapped country code', countryCode, 'to:', fullCountryName);
+
+                                                // Try to find the nationality in the dropdown
+                                                let found = false;
+                                                let selectedValue = null;
+
+                                                // First try: Exact match on full name
+                                                for (let i = 0; i < nationalityField.options.length; i++) {
+                                                    const option = nationalityField.options[i];
+                                                    if (option.text.toUpperCase() === fullCountryName.toUpperCase()) {
+                                                        selectedValue = option.value;
+                                                        console.log('Found exact match for nationality:', option.text, 'with value:', selectedValue);
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+
+                                                // Second try: Contains match on full name
+                                                if (!found) {
+                                                    for (let i = 0; i < nationalityField.options.length; i++) {
+                                                        const option = nationalityField.options[i];
+                                                        if (option.text.toUpperCase().includes(fullCountryName.toUpperCase()) ||
+                                                            fullCountryName.toUpperCase().includes(option.text.toUpperCase())) {
+                                                            selectedValue = option.value;
+                                                            console.log('Found partial match for nationality:', option.text, 'with value:', selectedValue);
+                                                            found = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+
+                                                // If found, use Select2 to update the selection
+                                                if (found && selectedValue) {
+                                                    console.log('Setting dropdown to value:', selectedValue);
+
+                                                    // Use Select2's method to update the selection if available
+                                                    if (typeof $ !== 'undefined' && $(nationalityField).data('select2')) {
+                                                        console.log('Using Select2 API to update selection');
+                                                        $(nationalityField).val(selectedValue).trigger('change');
+                                                    } else {
+                                                        console.log('Using standard DOM to update selection');
+                                                        nationalityField.value = selectedValue;
+                                                        const event = new Event('change', {
+                                                            bubbles: true
+                                                        });
+                                                        nationalityField.dispatchEvent(event);
+                                                    }
+                                                } else {
+                                                    console.log('Could not find matching nationality after all attempts, showing hint');
+
+                                                    // Add a hint to manually select nationality
+                                                    setTimeout(() => {
+                                                        if (nationalityField && nationalityField.parentNode) {
+                                                            // Add a small hint below the field
+                                                            const hintEl = document.createElement('small');
+                                                            hintEl.className = 'text-warning';
+                                                            hintEl.style.display = 'block';
+                                                            hintEl.textContent = `Please select nationality manually (detected code: ${countryCode})`;
+
+                                                            // Check if hint already exists
+                                                            const existingHint = nationalityField.parentNode.querySelector('.text-warning');
+                                                            if (!existingHint) {
+                                                                nationalityField.parentNode.appendChild(hintEl);
+
+                                                                // Focus the field to prompt the user to edit
+                                                                nationalityField.focus();
+
+                                                                // Remove the hint after 10 seconds
+                                                                setTimeout(() => {
+                                                                    if (hintEl.parentNode) {
+                                                                        hintEl.parentNode.removeChild(hintEl);
+                                                                    }
+                                                                }, 10000);
+                                                            }
+                                                        }
+                                                    }, 700);
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        console.log('Debug: No data in response');
+                                    }
+                                } else {
+                                    console.error('Debug: Processing failed:', data.error || 'Unknown error');
+
+                                    // Check if there's an extraction error in the response data
+                                    const extractionError = data.data && data.data.extraction_error;
+                                    if (extractionError) {
+                                        console.log('Debug: Extraction error detected in failure response:', extractionError);
+
+                                        // Show extraction error container
+                                        const errorContainer = document.getElementById('extractionErrorContainer');
+                                        const errorMessage = document.getElementById('extractionErrorMessage');
+
+                                        if (errorContainer && errorMessage) {
+                                            errorMessage.textContent = extractionError;
+                                            errorContainer.style.display = 'block';
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Debug: Error processing passport:', error);
+                            })
+                            .finally(() => {
+                                // Hide processing indicator
+                                if (processingIndicator) {
+                                    processingIndicator.style.display = 'none';
+                                }
+                            });
+                    });
+                }
             });
-        }
-    });
-    
-    // Function to add a new customer
-    function addCustomerFun() {
-        var InsertCustomer = "InsertCustomer";
-        var customerName = $('#customerName').val();
-        if (customerName == "") {
-            notify('Validation Error!', 'Customer name is required', 'error');
-            return;
-        }
-        
-        var customerPhone = $('#customerPhone').val();
-        if (customerPhone == "") {
-            notify('Validation Error!', 'Phone number is required', 'error');
-            return;
-        }
-        
-        var customerEmail = $('#customerEmail').val();
-        var customerAddress = $('#customerAddress').val();
-        
-        // Disable the button to prevent multiple submissions
-        $(".btn-info").prop("disabled", true);
-        
-        console.log("Submitting customer data:", {
-            name: customerName,
-            phone: customerPhone,
-            email: customerEmail,
-            address: customerAddress
-        });
-        
-        $.ajax({
-            type: "POST",
-            url: "residenceController.php",
-            data: {
-                InsertCustomer: InsertCustomer,
-                CustomerName: customerName,
-                CustomerPhone: customerPhone,
-                CustomerEmail: customerEmail,
-                CustomerAddress: customerAddress
-            },
-            success: function(response) {
-                console.log("Server response:", response);
-                if (response == "Success" || response.includes("Success")) {
-                    notify('Success!', "Customer added successfully", 'success');
-                    
-                    // Reset form fields
-                    $('#customerName').val('');
-                    $('#customerPhone').val('');
-                    $('#customerEmail').val('');
-                    $('#customerAddress').val('');
-                    
-                    // Close modal (try both Bootstrap 4 and 5 methods)
-                    try {
-                        if (typeof bootstrap !== 'undefined') {
-                            // Bootstrap 5
-                            var modalElement = document.getElementById('addCustomerModal');
-                            var modal = bootstrap.Modal.getInstance(modalElement);
-                            if (modal) {
-                                modal.hide();
-                            }
-                        } else {
-                            // Bootstrap 4
-                            $('#addCustomerModal').modal('hide');
-                        }
-                    } catch(e) {
-                        console.log("Error closing modal:", e);
-                        // Fallback
-                        $('#addCustomerModal').modal('hide');
-                    }
-                    
-                    // Refresh the customer dropdown
-                    console.log("Refreshing customer dropdown");
-                    getCustomer('all', null);
-                } else {
-                    try {
-                        // Try to parse as JSON in case it is returning in that format
-                        const result = JSON.parse(response);
-                        if (result.success) {
+
+            // Function to add a new customer
+            function addCustomerFun() {
+                var InsertCustomer = "InsertCustomer";
+                var customerName = $('#customerName').val();
+                if (customerName == "") {
+                    notify('Validation Error!', 'Customer name is required', 'error');
+                    return;
+                }
+
+                var customerRef = $('#customerRef').val();
+                var customerPhone = $('#customerPhone').val();
+                if (customerPhone == "") {
+                    notify('Validation Error!', 'Phone number is required', 'error');
+                    return;
+                }
+
+                var customerEmail = $('#customerEmail').val();
+                var customerAddress = $('#customerAddress').val();
+
+                // Disable the button to prevent multiple submissions
+                $(".btn-info").prop("disabled", true);
+
+                console.log("Submitting customer data:", {
+                    name: customerName,
+                    ref: customerRef,
+                    phone: customerPhone,
+                    email: customerEmail,
+                    address: customerAddress
+                });
+
+                $.ajax({
+                    type: "POST",
+                    url: "residenceController.php",
+                    data: {
+                        InsertCustomer: InsertCustomer,
+                        CustomerName: customerName,
+                        CustomerRef: customerRef,
+                        CustomerPhone: customerPhone,
+                        CustomerEmail: customerEmail,
+                        CustomerAddress: customerAddress
+                    },
+                    success: function(response) {
+                        console.log("Server response:", response);
+                        if (response == "Success" || response.includes("Success")) {
                             notify('Success!', "Customer added successfully", 'success');
-                            
-                            // Close modal
-                            $('#addCustomerModal').modal('hide');
-                            
+
+                            // Reset form fields
+                            $('#customerName').val('');
+                            $('#customerPhone').val('');
+                            $('#customerEmail').val('');
+                            $('#customerAddress').val('');
+
+                            // Close modal (try both Bootstrap 4 and 5 methods)
+                            try {
+                                if (typeof bootstrap !== 'undefined') {
+                                    // Bootstrap 5
+                                    var modalElement = document.getElementById('addCustomerModal');
+                                    var modal = bootstrap.Modal.getInstance(modalElement);
+                                    if (modal) {
+                                        modal.hide();
+                                    }
+                                } else {
+                                    // Bootstrap 4
+                                    $('#addCustomerModal').modal('hide');
+                                }
+                            } catch (e) {
+                                console.log("Error closing modal:", e);
+                                // Fallback
+                                $('#addCustomerModal').modal('hide');
+                            }
+
                             // Refresh the customer dropdown
+                            console.log("Refreshing customer dropdown");
                             getCustomer('all', null);
                         } else {
-                            notify('Error!', result.message || "Failed to add customer", 'error');
-                        }
-                    } catch (e) {
-                        // If not JSON, display the raw response as error
-                        notify('Error!', response, 'error');
-                    }
-                }
-                // Re-enable the button
-                $(".btn-info").prop("disabled", false);
-            },
-            error: function(xhr, status, error) {
-                console.error("AJAX error:", xhr.responseText);
-                notify('Error!', "Failed to communicate with the server: " + error, 'error');
-                // Re-enable the button
-                $(".btn-info").prop("disabled", false);
-            }
-        });
-    }
-    
-    // Initialize modal focus handling
-    $('#addCustomerModal').on('shown.bs.modal', function() {
-        $('#customerName').trigger('focus');
-    });
+                            try {
+                                // Try to parse as JSON in case it is returning in that format
+                                const result = JSON.parse(response);
+                                if (result.success) {
+                                    notify('Success!', "Customer added successfully", 'success');
 
-    // Add this new function to handle modal display
-    function showAddCustomerModal() {
-        console.log("Add Customer button clicked");
-        
-        // Force using jQuery method regardless of Bootstrap version
-        try {
-            // First try direct DOM selection with jQuery
-            var $modal = $('#addCustomerModal');
-            
-            // Ensure modal is properly configured
-            $modal.attr('tabindex', '-1');
-            $modal.attr('role', 'dialog');
-            $modal.attr('aria-hidden', 'true');
-            
-            // Ensure the modal is attached to body
-            if ($modal.parent().is('body') === false) {
-                $modal.appendTo('body');
+                                    // Close modal
+                                    $('#addCustomerModal').modal('hide');
+
+                                    // Refresh the customer dropdown
+                                    getCustomer('all', null);
+                                } else {
+                                    notify('Error!', result.message || "Failed to add customer", 'error');
+                                }
+                            } catch (e) {
+                                // If not JSON, display the raw response as error
+                                notify('Error!', response, 'error');
+                            }
+                        }
+                        // Re-enable the button
+                        $(".btn-info").prop("disabled", false);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX error:", xhr.responseText);
+                        notify('Error!', "Failed to communicate with the server: " + error, 'error');
+                        // Re-enable the button
+                        $(".btn-info").prop("disabled", false);
+                    }
+                });
             }
-            
-            // Try to display using jQuery
-            console.log("Forcing modal display with jQuery");
-            $modal.modal({
-                backdrop: 'static',
-                keyboard: false,
-                show: true
+
+            // Initialize modal focus handling
+            $('#addCustomerModal').on('shown.bs.modal', function() {
+                $('#customerName').trigger('focus');
             });
-            
-            // Additionally trigger show as a fallback
-            $modal.modal('show');
-            
-            // Force visibility as last resort
-            setTimeout(function() {
-                if (!$modal.hasClass('show')) {
-                    console.log("Modal still not showing - forcing display");
-                    $modal.addClass('show').css('display', 'block');
-                    $('body').addClass('modal-open');
-                    $('.modal-backdrop').remove();
-                    $('<div class="modal-backdrop fade show"></div>').appendTo('body');
+
+            // Add this new function to handle modal display
+            function showAddCustomerModal() {
+                console.log("Add Customer button clicked");
+
+                // Force using jQuery method regardless of Bootstrap version
+                try {
+                    // First try direct DOM selection with jQuery
+                    var $modal = $('#addCustomerModal');
+
+                    // Ensure modal is properly configured
+                    $modal.attr('tabindex', '-1');
+                    $modal.attr('role', 'dialog');
+                    $modal.attr('aria-hidden', 'true');
+
+                    // Ensure the modal is attached to body
+                    if ($modal.parent().is('body') === false) {
+                        $modal.appendTo('body');
+                    }
+
+                    // Try to display using jQuery
+                    console.log("Forcing modal display with jQuery");
+                    $modal.modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        show: true
+                    });
+
+                    // Additionally trigger show as a fallback
+                    $modal.modal('show');
+
+                    // Force visibility as last resort
+                    setTimeout(function() {
+                        if (!$modal.hasClass('show')) {
+                            console.log("Modal still not showing - forcing display");
+                            $modal.addClass('show').css('display', 'block');
+                            $('body').addClass('modal-open');
+                            $('.modal-backdrop').remove();
+                            $('<div class="modal-backdrop fade show"></div>').appendTo('body');
+                        }
+                    }, 300);
+                } catch (error) {
+                    console.error("Modal display error:", error);
+                    alert("Could not open the Add Customer form. Please refresh and try again.");
                 }
-            }, 300);
-        } catch (error) {
-            console.error("Modal display error:", error);
-            alert("Could not open the Add Customer form. Please refresh and try again.");
-        }
-    }
-</script>
+            }
+        </script>
         </body>
 
         </html>

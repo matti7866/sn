@@ -1,47 +1,46 @@
 <?php
-    session_start();
-    if(!isset($_SESSION['user_id'])){
+session_start();
+if (!isset($_SESSION['user_id'])) {
     header('location:login.php');
-    }
-    include 'connection.php';
-    
-    // Set PDO to throw exceptions on error
-    if (isset($pdo)) {
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
-    
-    if(!isset($_SESSION['user_id']))
-    {
-	  header('location:login.php');
-    }
-    $sql = "SELECT permission.select FROM `permission` WHERE role_id = :role_id AND page_name = 'Residence' ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(':role_id', $_SESSION['role_id']);
-    $stmt->execute();
-    $select = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    $select = $select[0]['select'];
-    if($select == 0){
-        echo "<script>window.location.href='pageNotFound.php'</script>"; 
-    }
+}
+include 'connection.php';
 
-    if(isset($_POST['GetPendingResidence'])){
-        // Log all relevant POST data for debugging
-        error_log("POST data received: " . json_encode($_POST));
-        
-        try {
-            $page = isset($_POST['Page']) ? (int)$_POST['Page'] : 1;
-            $recordsPerPage = 10;
-            $offset = ($page - 1) * $recordsPerPage;
-            
-            if(isset($_POST['Search']) && $_POST['Search'] !== ''){
-                $search = '%'.  str_replace(' ', '',strtolower($_POST['Search'])) . '%';
-                
-                // Log the search parameter for debugging
-                error_log("Search parameter: " . $_POST['Search']);
-                error_log("Formatted search: " . $search);
-                
-                // Get total count for pagination - FIXED to include needed columns
-                $countQuery = $pdo->prepare("SELECT COUNT(*) as total FROM(SELECT residenceID AS main_residenceID, 
+// Set PDO to throw exceptions on error
+if (isset($pdo)) {
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+}
+
+if (!isset($_SESSION['user_id'])) {
+    header('location:login.php');
+}
+$sql = "SELECT permission.select FROM `permission` WHERE role_id = :role_id AND page_name = 'Residence' ";
+$stmt = $pdo->prepare($sql);
+$stmt->bindParam(':role_id', $_SESSION['role_id']);
+$stmt->execute();
+$select = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+$select = $select[0]['select'];
+if ($select == 0) {
+    echo "<script>window.location.href='pageNotFound.php'</script>";
+}
+
+if (isset($_POST['GetPendingResidence'])) {
+    // Log all relevant POST data for debugging
+    error_log("POST data received: " . json_encode($_POST));
+
+    try {
+        $page = isset($_POST['Page']) ? (int)$_POST['Page'] : 1;
+        $recordsPerPage = 10;
+        $offset = ($page - 1) * $recordsPerPage;
+
+        if (isset($_POST['Search']) && $_POST['Search'] !== '') {
+            $search = '%' .  str_replace(' ', '', strtolower($_POST['Search'])) . '%';
+
+            // Log the search parameter for debugging
+            error_log("Search parameter: " . $_POST['Search']);
+            error_log("Formatted search: " . $search);
+
+            // Get total count for pagination - FIXED to include needed columns
+            $countQuery = $pdo->prepare("SELECT COUNT(*) as total FROM(SELECT residenceID AS main_residenceID, 
                 customer.customer_name, residence.passenger_name,
                 (SELECT IFNULL(company_name,'') FROM company WHERE company.company_id = residence.company) AS company_name,
                 (SELECT IFNULL(company_number,'') FROM company WHERE company.company_id = residence.company) AS company_number,
@@ -53,14 +52,15 @@
                 OR REPLACE(LOWER(company_name),' ','') LIKE :search 
                 OR REPLACE(LOWER(company_number),' ','') LIKE :search)
                 AND deleted = 0");
-                $countQuery->bindParam(':search', $search);
-                $countQuery->execute();
-                $totalRecords = $countQuery->fetch(\PDO::FETCH_ASSOC)['total'];
-                
-                // Get paginated data - now retrieving all residence records regardless of status
-                $query = $pdo->prepare("SELECT res.residenceID AS main_residenceID,res.customer_id, 
+            $countQuery->bindParam(':search', $search);
+            $countQuery->execute();
+            $totalRecords = $countQuery->fetch(\PDO::FETCH_ASSOC)['total'];
+
+            // Get paginated data - now retrieving all residence records regardless of status
+            $query = $pdo->prepare("SELECT res.residenceID AS main_residenceID,res.customer_id, 
                 res.passenger_name, res.completedStep, res.deleted, res.sale_price,
                 res.saleCurID, cus.customer_name, 
+                IF(res.expiry_date < CURDATE(), 1, 0) as isExpired,
                 cus.customer_email, cus.customer_phone, cus.customer_Address,
                 (SELECT IFNULL(company_name,'') FROM company WHERE company.company_id = res.company) AS company_name,
                 (SELECT IFNULL(company_number,'') FROM company WHERE company.company_id = res.company) AS company_number,
@@ -89,32 +89,33 @@
                 OR REPLACE(LOWER((SELECT IFNULL(company_number,'') FROM company WHERE company.company_id = res.company)),' ','') LIKE :search) 
                 AND res.deleted = 0 
                 ORDER BY res.residenceID DESC LIMIT :offset, :limit");
-                
-                $query->bindParam(':search', $search);
-                $query->bindParam(':offset', $offset, PDO::PARAM_INT);
-                $query->bindParam(':limit', $recordsPerPage, PDO::PARAM_INT);
-                $query->execute();
-                $results = $query->fetchAll(\PDO::FETCH_ASSOC);
-                
-                // Create response with pagination info
-                $response = array(
-                    'totalRecords' => $totalRecords,
-                    'currentPage' => $page,
-                    'recordsPerPage' => $recordsPerPage,
-                    'records' => $results
-                );
-                
-                echo json_encode($response);
-            } else {
-                // Default query without search - now retrieving all residence records
-                $countQuery = $pdo->prepare("SELECT COUNT(*) as total FROM `residence` WHERE deleted = 0");
-                $countQuery->execute();
-                $totalRecords = $countQuery->fetch(\PDO::FETCH_ASSOC)['total'];
-                
-                $query = $pdo->prepare("SELECT res.residenceID AS main_residenceID,res.customer_id, 
+
+            $query->bindParam(':search', $search);
+            $query->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $query->bindParam(':limit', $recordsPerPage, PDO::PARAM_INT);
+            $query->execute();
+            $results = $query->fetchAll(\PDO::FETCH_ASSOC);
+
+            // Create response with pagination info
+            $response = array(
+                'totalRecords' => $totalRecords,
+                'currentPage' => $page,
+                'recordsPerPage' => $recordsPerPage,
+                'records' => $results
+            );
+
+            echo json_encode($response);
+        } else {
+            // Default query without search - now retrieving all residence records
+            $countQuery = $pdo->prepare("SELECT COUNT(*) as total FROM `residence` WHERE deleted = 0");
+            $countQuery->execute();
+            $totalRecords = $countQuery->fetch(\PDO::FETCH_ASSOC)['total'];
+
+            $query = $pdo->prepare("SELECT res.residenceID AS main_residenceID,res.customer_id, 
                 res.passenger_name, res.completedStep, res.deleted, res.sale_price,
                 res.saleCurID, cus.customer_name, 
                 cus.customer_email, cus.customer_phone, cus.customer_Address,
+                IF(res.expiry_date < CURDATE(), 1, 0) as isExpired,
                 (SELECT IFNULL(company_name,'') FROM company WHERE company.company_id = res.company) AS company_name,
                 (SELECT IFNULL(company_number,'') FROM company WHERE company.company_id = res.company) AS company_number,
                 (SELECT country_names FROM country_name 
@@ -134,48 +135,49 @@
                 (SELECT currencyName FROM currency 
                 WHERE currency.currencyID = (SELECT fineCurrencyID FROM residencefine 
                 WHERE residencefine.residenceID = res.residenceID LIMIT 1)) AS residenceFineCurrency
+                
                 FROM residence as res 
                 INNER JOIN customer as cus ON cus.customer_id = res.customer_id 
                 WHERE res.deleted = 0 
                 ORDER BY res.residenceID DESC LIMIT :offset, :limit");
-                
-                $query->bindParam(':offset', $offset, PDO::PARAM_INT);
-                $query->bindParam(':limit', $recordsPerPage, PDO::PARAM_INT);
-                $query->execute();
-                $results = $query->fetchAll(\PDO::FETCH_ASSOC);
-                
-                // Create response with pagination info
-                $response = array(
-                    'totalRecords' => $totalRecords,
-                    'currentPage' => $page,
-                    'recordsPerPage' => $recordsPerPage,
-                    'records' => $results
-                );
-                
-                echo json_encode($response);
-            }
-        } catch (PDOException $e) {
-            error_log("Database error: " . $e->getMessage());
-            echo json_encode(['error' => true, 'message' => 'Database error: ' . $e->getMessage()]);
-        } catch (Exception $e) {
-            error_log("General error: " . $e->getMessage());
-            echo json_encode(['error' => true, 'message' => 'Error: ' . $e->getMessage()]);
+
+            $query->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $query->bindParam(':limit', $recordsPerPage, PDO::PARAM_INT);
+            $query->execute();
+            $results = $query->fetchAll(\PDO::FETCH_ASSOC);
+
+            // Create response with pagination info
+            $response = array(
+                'totalRecords' => $totalRecords,
+                'currentPage' => $page,
+                'recordsPerPage' => $recordsPerPage,
+                'records' => $results
+            );
+
+            echo json_encode($response);
         }
-    }else if(isset($_POST['Select_Accounts'])){
-        $selectQuery = $pdo->prepare("SELECT `account_ID`, `account_Name` FROM `accounts`ORDER BY account_Name ASC ");
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $supplier = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($supplier);
-    }else if(isset($_POST['GenerateReceipt'])){
-        try {
-            // Begin transaction
-            $pdo->beginTransaction();
-            
-            // Get payment details
-            $paymentID = $_POST['PaymentID'];
-            $query = $pdo->prepare("SELECT cp.pay_id, cp.customer_id, cp.payment_amount, cp.datetime, 
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        echo json_encode(['error' => true, 'message' => 'Database error: ' . $e->getMessage()]);
+    } catch (Exception $e) {
+        error_log("General error: " . $e->getMessage());
+        echo json_encode(['error' => true, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+} else if (isset($_POST['Select_Accounts'])) {
+    $selectQuery = $pdo->prepare("SELECT `account_ID`, `account_Name` FROM `accounts`ORDER BY account_Name ASC ");
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $supplier = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($supplier);
+} else if (isset($_POST['GenerateReceipt'])) {
+    try {
+        // Begin transaction
+        $pdo->beginTransaction();
+
+        // Get payment details
+        $paymentID = $_POST['PaymentID'];
+        $query = $pdo->prepare("SELECT cp.pay_id, cp.customer_id, cp.payment_amount, cp.datetime, 
                                     cp.currencyID, cp.staff_id, cp.accountID, cp.PaymentFor, cp.remarks,
                                     c.customer_name, c.customer_email, c.customer_phone,
                                     cr.currencyName, a.account_Name, s.staff_name
@@ -185,167 +187,166 @@
                                     INNER JOIN accounts a ON a.account_ID = cp.accountID
                                     INNER JOIN staff s ON s.staff_id = cp.staff_id
                                     WHERE cp.pay_id = :paymentID");
-            $query->bindParam(':paymentID', $paymentID);
-            $query->execute();
-            $payment = $query->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$payment) {
-                // Payment not found
-                echo json_encode(['message' => 'Error', 'error' => 'Payment not found']);
-                exit;
-            }
-            
-            // Generate invoice number
-            $year = date('Y');
-            $month = date('m');
-            $day = date('d');
-            
-            // Get max invoice number
-            $invQuery = $pdo->prepare("SELECT MAX(CAST(SUBSTRING(invoiceNumber, 12) AS UNSIGNED)) as max_num FROM invoice 
-                                       WHERE invoiceNumber LIKE :prefix");
-            $prefix = "INV-$year$month$day-%";
-            $invQuery->bindParam(':prefix', $prefix);
-            $invQuery->execute();
-            $result = $invQuery->fetch(PDO::FETCH_ASSOC);
-            
-            $nextNum = 1;
-            if ($result && $result['max_num']) {
-                $nextNum = $result['max_num'] + 1;
-            }
-            
-            $invoiceNumber = "INV-$year$month$day-$nextNum";
-            
-            // Insert into invoice table
-            $insertInvoice = $pdo->prepare("INSERT INTO invoice (customerID, invoiceNumber, invoiceCurrency) 
-                                           VALUES (:customerID, :invoiceNumber, :invoiceCurrency)");
-            
-            $insertInvoice->bindParam(':customerID', $payment['customer_id']);
-            $insertInvoice->bindParam(':invoiceNumber', $invoiceNumber);
-            $insertInvoice->bindParam(':invoiceCurrency', $payment['currencyID']);
-            $insertInvoice->execute();
-            
-            // Get the invoice ID
-            $invoiceID = $pdo->lastInsertId();
-            
-            // Insert into invoicedetails
-            $transactionType = "Payment";
-            $insertInvoiceDetails = $pdo->prepare("INSERT INTO invoicedetails (invoiceID, transactionID, transactionType) 
-                                                 VALUES (:invoiceID, :transactionID, :transactionType)");
-            
-            $insertInvoiceDetails->bindParam(':invoiceID', $invoiceID);
-            $insertInvoiceDetails->bindParam(':transactionID', $payment['pay_id']);
-            $insertInvoiceDetails->bindParam(':transactionType', $transactionType);
-            $insertInvoiceDetails->execute();
-            
-            // Commit transaction
-            $pdo->commit();
-            
-            // Success response
-            echo json_encode(['message' => 'Success', 'receiptID' => $invoiceID]);
-        } catch (PDOException $e) {
-            // Roll back if there's an error
-            $pdo->rollBack();
-            error_log("Database error: " . $e->getMessage());
-            echo json_encode(['message' => 'Error', 'error' => 'Database error: ' . $e->getMessage()]);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            error_log("General error: " . $e->getMessage());
-            echo json_encode(['message' => 'Error', 'error' => 'Error: ' . $e->getMessage()]);
+        $query->bindParam(':paymentID', $paymentID);
+        $query->execute();
+        $payment = $query->fetch(PDO::FETCH_ASSOC);
+
+        if (!$payment) {
+            // Payment not found
+            echo json_encode(['message' => 'Error', 'error' => 'Payment not found']);
+            exit;
         }
-    }else if(isset($_POST['GetPendingResidencePayment'])){
-        $selectQuery = $pdo->prepare("SELECT sale_price - IFNULL((SELECT SUM(customer_payments.payment_amount) FROM 
+
+        // Generate invoice number
+        $year = date('Y');
+        $month = date('m');
+        $day = date('d');
+
+        // Get max invoice number
+        $invQuery = $pdo->prepare("SELECT MAX(CAST(SUBSTRING(invoiceNumber, 12) AS UNSIGNED)) as max_num FROM invoice 
+                                       WHERE invoiceNumber LIKE :prefix");
+        $prefix = "INV-$year$month$day-%";
+        $invQuery->bindParam(':prefix', $prefix);
+        $invQuery->execute();
+        $result = $invQuery->fetch(PDO::FETCH_ASSOC);
+
+        $nextNum = 1;
+        if ($result && $result['max_num']) {
+            $nextNum = $result['max_num'] + 1;
+        }
+
+        $invoiceNumber = "INV-$year$month$day-$nextNum";
+
+        // Insert into invoice table
+        $insertInvoice = $pdo->prepare("INSERT INTO invoice (customerID, invoiceNumber, invoiceCurrency) 
+                                           VALUES (:customerID, :invoiceNumber, :invoiceCurrency)");
+
+        $insertInvoice->bindParam(':customerID', $payment['customer_id']);
+        $insertInvoice->bindParam(':invoiceNumber', $invoiceNumber);
+        $insertInvoice->bindParam(':invoiceCurrency', $payment['currencyID']);
+        $insertInvoice->execute();
+
+        // Get the invoice ID
+        $invoiceID = $pdo->lastInsertId();
+
+        // Insert into invoicedetails
+        $transactionType = "Payment";
+        $insertInvoiceDetails = $pdo->prepare("INSERT INTO invoicedetails (invoiceID, transactionID, transactionType) 
+                                                 VALUES (:invoiceID, :transactionID, :transactionType)");
+
+        $insertInvoiceDetails->bindParam(':invoiceID', $invoiceID);
+        $insertInvoiceDetails->bindParam(':transactionID', $payment['pay_id']);
+        $insertInvoiceDetails->bindParam(':transactionType', $transactionType);
+        $insertInvoiceDetails->execute();
+
+        // Commit transaction
+        $pdo->commit();
+
+        // Success response
+        echo json_encode(['message' => 'Success', 'receiptID' => $invoiceID]);
+    } catch (PDOException $e) {
+        // Roll back if there's an error
+        $pdo->rollBack();
+        error_log("Database error: " . $e->getMessage());
+        echo json_encode(['message' => 'Error', 'error' => 'Database error: ' . $e->getMessage()]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("General error: " . $e->getMessage());
+        echo json_encode(['message' => 'Error', 'error' => 'Error: ' . $e->getMessage()]);
+    }
+} else if (isset($_POST['GetPendingResidencePayment'])) {
+    $selectQuery = $pdo->prepare("SELECT sale_price - IFNULL((SELECT SUM(customer_payments.payment_amount) FROM 
         customer_payments WHERE customer_payments.PaymentFor = :resID),0) AS remaining, currency.currencyName  FROM `residence`
         INNER JOIN currency ON currency.currencyID = residence.saleCurID WHERE residenceID = :resID");
-        $selectQuery->bindParam(':resID', $_POST['ID']);
-        $selectQuery->execute();
+    $selectQuery->bindParam(':resID', $_POST['ID']);
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['Insert_Payment'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT customer_id,saleCurID FROM `residence` WHERE residenceID =:residenceID");
+        $decisionFlag->bindParam(':residenceID', $_POST['ResID']);
+        $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['Insert_Payment'])){
-        try {
-            // First of all, let's begin a transaction
-                $pdo->beginTransaction();
-                $decisionFlag = $pdo->prepare("SELECT customer_id,saleCurID FROM `residence` WHERE residenceID =:residenceID");
-                $decisionFlag->bindParam(':residenceID', $_POST['ResID']);
-                $decisionFlag->execute();
-                /* Fetch all of the remaining rows in the result set */
-                $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
-                if(($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['saleCurID'] == '' || $rpt[0]['saleCurID'] == null)){
-                    
-                    $pdo->rollback();
-                    echo "Something went wrong";
-                    exit();
-                }else{
-                    $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
-                    $getAccCur->bindParam(':accountID', $_POST['Account_ID']);
-                    $getAccCur->execute();
-                    /* Fetch all of the remaining rows in the result set */
-                    $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
-                    if($accCur[0]['account_Name'] == "Cash"){
-                        // create prepared statement
-                        $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if (($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['saleCurID'] == '' || $rpt[0]['saleCurID'] == null)) {
+
+            $pdo->rollback();
+            echo "Something went wrong";
+            exit();
+        } else {
+            $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur->bindParam(':accountID', $_POST['Account_ID']);
+            $getAccCur->execute();
+            /* Fetch all of the remaining rows in the result set */
+            $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
+            if ($accCur[0]['account_Name'] == "Cash") {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
                         PaymentFor) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,:PaymentFor)";
-                        $stmt = $pdo->prepare($sql);
-                        // bind parameters to statement
-                        $stmt->bindParam(':customer_id',$rpt[0]['customer_id']);
-                        $stmt->bindParam(':payment_amount', $_POST['Payment']);
-                        $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
-                        $stmt->bindParam(':staff_id',$_SESSION['user_id']);
-                        $stmt->bindParam(':accountID', $_POST['Account_ID']);
-                        $stmt->bindParam(':PaymentFor', $_POST['ResID']);
-                    }else if($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] ==  $rpt[0]['saleCurID']){
-                        // create prepared statement
-                        $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Payment']);
+                $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Account_ID']);
+                $stmt->bindParam(':PaymentFor', $_POST['ResID']);
+            } else if ($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] ==  $rpt[0]['saleCurID']) {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
                         PaymentFor) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,:PaymentFor)";
-                        $stmt = $pdo->prepare($sql);
-                        // bind parameters to statement
-                        $stmt->bindParam(':customer_id',$rpt[0]['customer_id']);
-                        $stmt->bindParam(':payment_amount', $_POST['Payment']);
-                        $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
-                        $stmt->bindParam(':staff_id',$_SESSION['user_id']);
-                        $stmt->bindParam(':accountID', $_POST['Account_ID']);
-                        $stmt->bindParam(':PaymentFor', $_POST['ResID']);
-                    }else{
-                        $pdo->rollback();
-                        echo "Currencies does not match! Please select account that its currency match with the sale price currency";
-                        exit();
-                    }
-                    
-                    // execute the prepared statement
-                    $stmt->execute();
-                    // create prepared statement
-                    $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Payment']);
+                $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Account_ID']);
+                $stmt->bindParam(':PaymentFor', $_POST['ResID']);
+            } else {
+                $pdo->rollback();
+                echo "Currencies does not match! Please select account that its currency match with the sale price currency";
+                exit();
+            }
+
+            // execute the prepared statement
+            $stmt->execute();
+            // create prepared statement
+            $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
                     FROM residencefine WHERE residencefine.residenceID = :resID)) - ((SELECT 
                     IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
                     :resID) + (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments INNER JOIN 
                     residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment WHERE 
                     residencefine.residenceID = :resID)) AS total FROM residence WHERE residence.residenceID = :resID";
-                    $checkTotalStmt = $pdo->prepare($checkTotal);
-                    $checkTotalStmt->bindParam(':resID', $_POST['ResID']);
-                    $checkTotalStmt->execute();
-                    $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
-                    if($total[0]['total'] == 0){
-                        $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
-                        $updateLockTranStmt = $pdo->prepare($updateLockTran);
-                        $updateLockTranStmt->bindParam(':resID', $_POST['ResID']);
-                        $updateLockTranStmt->execute();
-                    }
-                    $pdo->commit(); 
-                    echo "Success";
-                }
-        } catch (PDOException $e) {
-            $pdo->rollback();
-            echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+            $checkTotalStmt = $pdo->prepare($checkTotal);
+            $checkTotalStmt->bindParam(':resID', $_POST['ResID']);
+            $checkTotalStmt->execute();
+            $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
+            if ($total[0]['total'] == 0) {
+                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+                $updateLockTranStmt = $pdo->prepare($updateLockTran);
+                $updateLockTranStmt->bindParam(':resID', $_POST['ResID']);
+                $updateLockTranStmt->execute();
+            }
+            $pdo->commit();
+            echo "Success";
         }
-         
-    }else if(isset($_POST['GetPendingPayForResidence'])){
-        if($_POST['Search'] != ''){
-            $page = (int)$_POST['Page'];
-            $page = $page - 1;
-            $offSet = $page  * 10 ;
-            $search = '%'.  str_replace(' ', '',strtolower($_POST['Search'])) . '%'; 
-            $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name, 
+    } catch (PDOException $e) {
+        $pdo->rollback();
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['GetPendingPayForResidence'])) {
+    if ($_POST['Search'] != '') {
+        $page = (int)$_POST['Page'];
+        $page = $page - 1;
+        $offSet = $page  * 10;
+        $search = '%' .  str_replace(' ', '', strtolower($_POST['Search'])) . '%';
+        $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name, 
             airports.countryName,country_names,sale_price,currency.currencyName,completedStep,company_name ,company_number,(SELECT 
             IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
             main_residenceID) AS total,(SELECT IFNULL(SUM(residencefine.fineAmount),0) FROM residencefine WHERE 
@@ -377,13 +378,13 @@
             REPLACE(LOWER(customer_name),' ','') LIKE :search OR REPLACE(LOWER(company_name),' ','') LIKE :search OR 
             REPLACE(LOWER(company_number),' ','') LIKE :search)) AS baseTable WHERE sale_price - total != 0 OR total_Fine - 
             totalFinePaid !=0  ORDER BY main_residenceID DESC LIMIT 10 OFFSET :OffsetNumber;");
-             $selectQuery->bindParam(':search', $search);
-             $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
-        }else{
-            $page = (int)$_POST['Page'];
-            $page = $page - 1;
-            $offSet = $page  * 10 ;
-            $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name , 
+        $selectQuery->bindParam(':search', $search);
+        $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
+    } else {
+        $page = (int)$_POST['Page'];
+        $page = $page - 1;
+        $offSet = $page  * 10;
+        $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name , 
             airports.countryName, country_names,sale_price, currency.currencyName, completedStep,(SELECT IFNULL(company_name,'')
             FROM company WHERE company.company_id = residence.company ) AS company_name,(SELECT IFNULL(company_number,'') FROM 
             company WHERE company.company_id = residence.company ) AS company_number,(SELECT 
@@ -405,20 +406,20 @@
             ON country_name.country_id = residence.VisaType INNER JOIN currency ON currency.currencyID = residence.saleCurID 
             WHERE completedStep = 10 ) AS baseTable WHERE sale_price - total != 0 OR total_Fine - totalFinePaid !=0  ORDER BY 
             main_residenceID DESC LIMIT 10 OFFSET :OffsetNumber;");
-            $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
-        }
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $rpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($rpt);
-    }else if(isset($_POST['GetCompletedResidence'])){
-        if($_POST['Search'] != ''){
-            $page = (int)$_POST['Page'];
-            $page = $page - 1;
-            $offSet = $page  * 10 ;
-            $search = '%'.  str_replace(' ', '',strtolower($_POST['Search'])) . '%'; 
-            $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name, 
+        $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
+    }
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $rpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($rpt);
+} else if (isset($_POST['GetCompletedResidence'])) {
+    if ($_POST['Search'] != '') {
+        $page = (int)$_POST['Page'];
+        $page = $page - 1;
+        $offSet = $page  * 10;
+        $search = '%' .  str_replace(' ', '', strtolower($_POST['Search'])) . '%';
+        $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name, 
             airports.countryName,country_names,sale_price,currency.currencyName,completedStep,company_name ,company_number,(SELECT 
             IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
             main_residenceID) AS total,(SELECT IFNULL(SUM(residencefine.fineAmount),0) FROM residencefine WHERE 
@@ -450,13 +451,13 @@
             REPLACE(LOWER(customer_name),' ','') LIKE :search OR REPLACE(LOWER(company_name),' ','') LIKE :search OR 
             REPLACE(LOWER(company_number),' ','') LIKE :search)) AS baseTable WHERE sale_price - total = 0 AND total_Fine - 
             totalFinePaid = 0  ORDER BY main_residenceID DESC LIMIT 10 OFFSET :OffsetNumber;");
-             $selectQuery->bindParam(':search', $search);
-             $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
-        }else{
-            $page = (int)$_POST['Page'];
-            $page = $page - 1;
-            $offSet = $page  * 10 ;
-            $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name , 
+        $selectQuery->bindParam(':search', $search);
+        $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
+    } else {
+        $page = (int)$_POST['Page'];
+        $page = $page - 1;
+        $offSet = $page  * 10;
+        $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name , 
             airports.countryName, country_names,sale_price, currency.currencyName, completedStep,(SELECT IFNULL(company_name,'')
             FROM company WHERE company.company_id = residence.company ) AS company_name,(SELECT IFNULL(company_number,'') FROM 
             company WHERE company.company_id = residence.company ) AS company_number,(SELECT 
@@ -478,96 +479,94 @@
             ON country_name.country_id = residence.VisaType INNER JOIN currency ON currency.currencyID = residence.saleCurID 
             WHERE completedStep = 10 ) AS baseTable WHERE sale_price - total = 0 AND total_Fine - totalFinePaid =0  ORDER BY 
             main_residenceID DESC LIMIT 10 OFFSET :OffsetNumber; ");
-            $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
-        }
-        $selectQuery->execute();
+        $selectQuery->bindParam(":OffsetNumber", $offSet, PDO::PARAM_INT);
+    }
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $rpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($rpt);
+} else if (isset($_POST['SaveResidenceFine'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag->bindParam(':AccID', $_POST['ChargeAccount']);
+        $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
-        $rpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($rpt);
-    }else if(isset($_POST['SaveResidenceFine'])){
-        try {
-            // First of all, let's begin a transaction
-                $pdo->beginTransaction();
-                $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
-                $decisionFlag->bindParam(':AccID', $_POST['ChargeAccount']);
-                $decisionFlag->execute();
-                /* Fetch all of the remaining rows in the result set */
-                $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
-                if($rpt[0]['account_Name'] == "Cash"){
-                    // create prepared statement
-                    $sql = "INSERT INTO `residencefine`(`residenceID`,`fineAmount`, `fineCurrencyID`, `accountID`, `imposedBy`)
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if ($rpt[0]['account_Name'] == "Cash") {
+            // create prepared statement
+            $sql = "INSERT INTO `residencefine`(`residenceID`,`fineAmount`, `fineCurrencyID`, `accountID`, `imposedBy`)
                     VALUES(:residenceID,:fineAmount,:fineCurrencyID,:accountID,:imposedBy)";
-                    $stmt = $pdo->prepare($sql);
-                    // bind parameters to statement
-                    $stmt->bindParam(':residenceID',$_POST['RID']);
-                    $stmt->bindParam(':fineAmount', $_POST['Fine_Amount']);
-                    $stmt->bindParam(':fineCurrencyID', $_POST['Fine_currency_type']);
-                    $stmt->bindParam(':accountID', $_POST['ChargeAccount']);
-                    $stmt->bindParam(':imposedBy',$_SESSION['user_id']);
-                }else{
-                    // create prepared statement
-                    $sql = "INSERT INTO `residencefine`(`residenceID`,`fineAmount`, `fineCurrencyID`, `accountID`, `imposedBy`)
+            $stmt = $pdo->prepare($sql);
+            // bind parameters to statement
+            $stmt->bindParam(':residenceID', $_POST['RID']);
+            $stmt->bindParam(':fineAmount', $_POST['Fine_Amount']);
+            $stmt->bindParam(':fineCurrencyID', $_POST['Fine_currency_type']);
+            $stmt->bindParam(':accountID', $_POST['ChargeAccount']);
+            $stmt->bindParam(':imposedBy', $_SESSION['user_id']);
+        } else {
+            // create prepared statement
+            $sql = "INSERT INTO `residencefine`(`residenceID`,`fineAmount`, `fineCurrencyID`, `accountID`, `imposedBy`)
                     VALUES(:residenceID,:fineAmount,:fineCurrencyID,:accountID,:imposedBy)";
-                    $stmt = $pdo->prepare($sql);
-                    // bind parameters to statement
-                    $stmt->bindParam(':residenceID',$_POST['RID']);
-                    $stmt->bindParam(':fineAmount', $_POST['Fine_Amount']);
-                    $stmt->bindParam(':fineCurrencyID', $rpt[0]['curID']);
-                    $stmt->bindParam(':accountID', $_POST['ChargeAccount']);
-                    $stmt->bindParam(':imposedBy',$_SESSION['user_id']);
-                }
-                $stmt->execute();
-                $pdo->commit(); 
-                echo "Success";
-        } catch (PDOException $e) {
-            $pdo->rollback();
-            echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+            $stmt = $pdo->prepare($sql);
+            // bind parameters to statement
+            $stmt->bindParam(':residenceID', $_POST['RID']);
+            $stmt->bindParam(':fineAmount', $_POST['Fine_Amount']);
+            $stmt->bindParam(':fineCurrencyID', $rpt[0]['curID']);
+            $stmt->bindParam(':accountID', $_POST['ChargeAccount']);
+            $stmt->bindParam(':imposedBy', $_SESSION['user_id']);
         }
-         
-    }else if(isset($_POST['ViewFine'])){
-        $selectQuery = $pdo->prepare("SELECT `residenceFineID`, residenceID, DATE_FORMAT(DATE(datetime),'%d-%b-%Y') AS 
+        $stmt->execute();
+        $pdo->commit();
+        echo "Success";
+    } catch (PDOException $e) {
+        $pdo->rollback();
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['ViewFine'])) {
+    $selectQuery = $pdo->prepare("SELECT `residenceFineID`, residenceID, DATE_FORMAT(DATE(datetime),'%d-%b-%Y') AS 
         residenceFineDate , `fineAmount`, currencyName, account_Name, staff_name, `docName`, `originalName` FROM `residencefine`
         INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID INNER JOIN accounts ON accounts.account_ID =
         residencefine.accountID INNER JOIN staff ON staff.staff_id = residencefine.imposedBy WHERE residencefine.residenceID =
         :resID;");
-        $selectQuery->bindParam(':resID', $_POST['ID']);
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['Upload_ExraChargeDoc'])){
-        try{
-            $image = uploadExtraDocs();
-            //If Customer pays on the spot
-                if($image == '')
-                {
-                    echo "Record not added becuase of file uploader";
-                }else{
-                        $sql = "UPDATE residencefine SET docName =:docName, originalName=:originalName WHERE residenceFineID
+    $selectQuery->bindParam(':resID', $_POST['ID']);
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['Upload_ExraChargeDoc'])) {
+    try {
+        $image = uploadExtraDocs();
+        //If Customer pays on the spot
+        if ($image == '') {
+            echo "Record not added becuase of file uploader";
+        } else {
+            $sql = "UPDATE residencefine SET docName =:docName, originalName=:originalName WHERE residenceFineID
                          =:residenceFineID";
-                }
-                $stmt = $pdo->prepare($sql);
-                // bind parameters to statement
-                $stmt->bindParam(':docName', $image);
-                $stmt->bindParam(':originalName', $_FILES['Chargesuploader']['name']);
-                $stmt->bindParam(':residenceFineID', $_POST['uploadChargesID']);
-                // execute the prepared statement
-                $stmt->execute();
-            echo "Success";
-        }catch(PDOException $e){
-            echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
         }
-    }else if(isset($_POST['DeleteResidence'])){
-        /// get resicence from the id
-        $statement = $pdo->prepare("SELECT * FROM `residence` WHERE residenceID = :residenceID");
-        $statement->bindParam(':residenceID', $_POST['ID']);
-        $statement->execute();
+        $stmt = $pdo->prepare($sql);
+        // bind parameters to statement
+        $stmt->bindParam(':docName', $image);
+        $stmt->bindParam(':originalName', $_FILES['Chargesuploader']['name']);
+        $stmt->bindParam(':residenceFineID', $_POST['uploadChargesID']);
+        // execute the prepared statement
+        $stmt->execute();
+        echo "Success";
+    } catch (PDOException $e) {
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['DeleteResidence'])) {
+    /// get resicence from the id
+    $statement = $pdo->prepare("SELECT * FROM `residence` WHERE residenceID = :residenceID");
+    $statement->bindParam(':residenceID', $_POST['ID']);
+    $statement->execute();
 
-        $residence = $statement->fetch(\PDO::FETCH_ASSOC);
+    $residence = $statement->fetch(\PDO::FETCH_ASSOC);
 
-        $statement = $pdo->prepare("
+    $statement = $pdo->prepare("
         INSERT INTO  `delete_requests` 
         SET 
             `type` = 'residence',
@@ -578,244 +577,638 @@
         ");
 
 
-        $statement->bindParam(':added_by', $_SESSION['user_id']);
-        $statement->bindParam(':unique_id', $_POST['ID']);
-        $statement->bindParam(':metadata', json_encode($residence));
-        $statement->bindParam(':datetime', date('Y-m-d H:i:s'));
-        $statement->execute();  
+    $statement->bindParam(':added_by', $_SESSION['user_id']);
+    $statement->bindParam(':unique_id', $_POST['ID']);
+    $statement->bindParam(':metadata', json_encode($residence));
+    $statement->bindParam(':datetime', date('Y-m-d H:i:s'));
+    $statement->execute();
 
 
-        // update residence status
-        $statement = $pdo->prepare("UPDATE `residence` SET `deleted` = 1 WHERE residenceID = :residenceID");
-        $statement->bindParam(':residenceID', $_POST['ID']);
-        $statement->execute();
+    // update residence status
+    $statement = $pdo->prepare("UPDATE `residence` SET `deleted` = 1 WHERE residenceID = :residenceID");
+    $statement->bindParam(':residenceID', $_POST['ID']);
+    $statement->execute();
 
-        echo "Success";
-
-
-    }else if(isset($_POST['GetDataForUpdate'])){
-        $selectQuery = $pdo->prepare("SELECT `fineAmount`, `fineCurrencyID`, accounts.account_ID, account_Name FROM 
+    echo "Success";
+} else if (isset($_POST['GetDataForUpdate'])) {
+    $selectQuery = $pdo->prepare("SELECT `fineAmount`, `fineCurrencyID`, accounts.account_ID, account_Name FROM 
         `residencefine` INNER JOIN accounts ON accounts.account_ID = residencefine.accountID WHERE residenceFineID = 
         :residenceFineID");
-             $selectQuery->bindParam(':residenceFineID', $_POST['ID']);
-             $selectQuery->execute();
-             /* Fetch all of the remaining rows in the result set */
-             $ExChVisaRpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-             // encoding array to json format
-             echo json_encode($ExChVisaRpt);
-    }else if(isset($_POST['UpdSaveResidenceFine'])){
-        try {
-            // First of all, let's begin a transaction
-                $pdo->beginTransaction();
-                $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
-                $decisionFlag->bindParam(':AccID', $_POST['UpdchargeAccount']);
-                $decisionFlag->execute();
-                /* Fetch all of the remaining rows in the result set */
-                $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
-                if($rpt[0]['account_Name'] == "Cash"){
-                    // create prepared statement
-                    $sql = "UPDATE `residencefine` SET `fineAmount`=:fineAmount,
+    $selectQuery->bindParam(':residenceFineID', $_POST['ID']);
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $ExChVisaRpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($ExChVisaRpt);
+} else if (isset($_POST['UpdSaveResidenceFine'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag->bindParam(':AccID', $_POST['UpdchargeAccount']);
+        $decisionFlag->execute();
+        /* Fetch all of the remaining rows in the result set */
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if ($rpt[0]['account_Name'] == "Cash") {
+            // create prepared statement
+            $sql = "UPDATE `residencefine` SET `fineAmount`=:fineAmount,
                     `fineCurrencyID`=:fineCurrencyID,`accountID`=:accountID WHERE residencefine.residenceFineID = :residenceID";
-                    $stmt = $pdo->prepare($sql);
-                    // bind parameters to statement
-                    $stmt->bindParam(':residenceID',$_POST['UpdrID']);
-                    $stmt->bindParam(':fineAmount', $_POST['Updfine_Amount']);
-                    $stmt->bindParam(':fineCurrencyID', $_POST['Updfine_Currency_type']);
-                    $stmt->bindParam(':accountID', $_POST['UpdchargeAccount']);
-                }else{
-                    // create prepared statement
-                    $sql = "UPDATE `residencefine` SET  `fineAmount`=:fineAmount,
+            $stmt = $pdo->prepare($sql);
+            // bind parameters to statement
+            $stmt->bindParam(':residenceID', $_POST['UpdrID']);
+            $stmt->bindParam(':fineAmount', $_POST['Updfine_Amount']);
+            $stmt->bindParam(':fineCurrencyID', $_POST['Updfine_Currency_type']);
+            $stmt->bindParam(':accountID', $_POST['UpdchargeAccount']);
+        } else {
+            // create prepared statement
+            $sql = "UPDATE `residencefine` SET  `fineAmount`=:fineAmount,
                     `fineCurrencyID`=:fineCurrencyID,`accountID`=:accountID WHERE residencefine.residenceFineID = :residenceID";
-                    $stmt = $pdo->prepare($sql);
-                    // bind parameters to statement
-                    $stmt->bindParam(':residenceID',$_POST['UpdrID']);
-                    $stmt->bindParam(':fineAmount', $_POST['Updfine_Amount']);
-                    $stmt->bindParam(':fineCurrencyID', $rpt[0]['curID']);
-                    $stmt->bindParam(':accountID', $_POST['UpdchargeAccount']);
-                }
-                $stmt->execute();
-                $pdo->commit(); 
-                echo "Success";
-        } catch (PDOException $e) {
-            $pdo->rollback();
-            echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+            $stmt = $pdo->prepare($sql);
+            // bind parameters to statement
+            $stmt->bindParam(':residenceID', $_POST['UpdrID']);
+            $stmt->bindParam(':fineAmount', $_POST['Updfine_Amount']);
+            $stmt->bindParam(':fineCurrencyID', $rpt[0]['curID']);
+            $stmt->bindParam(':accountID', $_POST['UpdchargeAccount']);
         }
-         
-    }else if(isset($_POST['DeleteFine'])){
-        try{
-                // First of all, let's begin a transaction
-                $pdo->beginTransaction();
-                // Update status of ticket
-                    $sql = "SELECT docName FROM residencefine WHERE residenceFineID  = :id";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->bindParam(':id', $_POST['ID']);
-                    $stmt->execute();
-                    $file =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                    $file =  $file[0]['docName'];
-                    if(file_exists($file)){
-                        unlink($file);
-                    }
-                    if(!is_file($file)) {
-                        // delete payment for fine
-                        $RFPSql = "DELETE FROM `customer_payments` WHERE residenceFinePayment = :rfPID";
-                        $RFPStmt = $pdo->prepare($RFPSql);
-                        $RFPStmt->bindParam(':rfPID',$_POST['ID']);
-                        $RFPStmt->execute();
-                        // delete the fine
-                        $sql = "DELETE FROM `residencefine` WHERE residenceFineID = :residenceFineID";
-                        $stmt = $pdo->prepare($sql);
-                        $stmt->bindParam(':residenceFineID', $_POST['ID']);
-                        $stmt->execute();
-                    }
-            $pdo->commit();
-            echo "Success";
-        }catch(PDOException $e){
-            $pdo->rollback();
-            echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+        $stmt->execute();
+        $pdo->commit();
+        echo "Success";
+    } catch (PDOException $e) {
+        $pdo->rollback();
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['DeleteFine'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        // Update status of ticket
+        $sql = "SELECT docName FROM residencefine WHERE residenceFineID  = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':id', $_POST['ID']);
+        $stmt->execute();
+        $file =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $file =  $file[0]['docName'];
+        if (file_exists($file)) {
+            unlink($file);
         }
-    }else if(isset($_POST['GetTotalFine'])){
-        $selectQuery = $pdo->prepare("SELECT  IFNULL(fineAmount,0) - 
+        if (!is_file($file)) {
+            // delete payment for fine
+            $RFPSql = "DELETE FROM `customer_payments` WHERE residenceFinePayment = :rfPID";
+            $RFPStmt = $pdo->prepare($RFPSql);
+            $RFPStmt->bindParam(':rfPID', $_POST['ID']);
+            $RFPStmt->execute();
+            // delete the fine
+            $sql = "DELETE FROM `residencefine` WHERE residenceFineID = :residenceFineID";
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':residenceFineID', $_POST['ID']);
+            $stmt->execute();
+        }
+        $pdo->commit();
+        echo "Success";
+    } catch (PDOException $e) {
+        $pdo->rollback();
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['GetTotalFine'])) {
+    $selectQuery = $pdo->prepare("SELECT  IFNULL(fineAmount,0) - 
         IFNULL((SELECT SUM(customer_payments.payment_amount) FROM customer_payments WHERE customer_payments.residenceFinePayment =
         :residenceFineID ),0) AS fineAmount, IFNULL(currencyName,'') AS currencyName FROM residencefine INNER JOIN currency ON 
         currency.currencyID = residencefine.fineCurrencyID WHERE residenceFineID = :residenceFineID ");
-             $selectQuery->bindParam(':residenceFineID', $_POST['ID']);
-             $selectQuery->execute();
-             /* Fetch all of the remaining rows in the result set */
-             $ExChVisaRpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-             // encoding array to json format
-             echo json_encode($ExChVisaRpt);
-    }else if(isset($_POST['INSERT_FINE_PAYMENT'])){
-        try {
-            // First of all, let's begin a transaction
-                $pdo->beginTransaction();
-                $decisionFlag = $pdo->prepare("SELECT residence.residenceID,residence.customer_id,residencefine.fineCurrencyID FROM residence INNER JOIN
+    $selectQuery->bindParam(':residenceFineID', $_POST['ID']);
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $ExChVisaRpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($ExChVisaRpt);
+} else if (isset($_POST['INSERT_FINE_PAYMENT'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT residence.residenceID,residence.customer_id,residencefine.fineCurrencyID FROM residence INNER JOIN
                 residencefine ON residence.residenceID = residencefine.residenceID WHERE residencefine.residenceFineID = 
                 :residenceFineID");
-                $decisionFlag->bindParam(':residenceFineID', $_POST['ResFPaymentID']);
-                $decisionFlag->execute();
-                /* Fetch all of the remaining rows in the result set */
-                $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
-                if(($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['fineCurrencyID'] == '' || $rpt[0]['fineCurrencyID'] == null)){
-                    
-                    $pdo->rollback();
-                    echo "Something went wrong";
-                    exit();
-                }else{
-                    $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
-                    $getAccCur->bindParam(':accountID', $_POST['Fine_account_id']);
-                    $getAccCur->execute();
-                    /* Fetch all of the remaining rows in the result set */
-                    $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
-                    if($accCur[0]['account_Name'] == "Cash"){
-                        // create prepared statement
-                        $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
-                        residenceFinePayment) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,
-                        :residenceFinePayment)";
-                        $stmt = $pdo->prepare($sql);
-                        // bind parameters to statement
-                        $stmt->bindParam(':customer_id',$rpt[0]['customer_id']);
-                        $stmt->bindParam(':payment_amount', $_POST['Fine_payAmount']);
-                        $stmt->bindParam(':currencyID', $rpt[0]['fineCurrencyID']);
-                        $stmt->bindParam(':staff_id',$_SESSION['user_id']);
-                        $stmt->bindParam(':accountID', $_POST['Fine_account_id']);
-                        $stmt->bindParam(':residenceFinePayment', $_POST['ResFPaymentID']);
-                    }else if($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] ==  $rpt[0]['fineCurrencyID']){
-                        // create prepared statement
-                        $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
-                        residenceFinePayment) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,
-                        :residenceFinePayment)";
-                        $stmt = $pdo->prepare($sql);
-                        // bind parameters to statement
-                        $stmt->bindParam(':customer_id',$rpt[0]['customer_id']);
-                        $stmt->bindParam(':payment_amount', $_POST['Fine_payAmount']);
-                        $stmt->bindParam(':currencyID', $rpt[0]['fineCurrencyID']);
-                        $stmt->bindParam(':staff_id',$_SESSION['user_id']);
-                        $stmt->bindParam(':accountID', $_POST['Fine_account_id']);
-                        $stmt->bindParam(':residenceFinePayment', $_POST['ResFPaymentID']);
-                    }else{
-                        $pdo->rollback();
-                        echo "Currencies does not match! Please select account that its currency match with the sale price currency";
-                        exit();
-                    }
-                    
-                    // execute the prepared statement
-                    $stmt->execute();
-                    // create prepared statement
-                    $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
+        $decisionFlag->bindParam(':residenceFineID', $_POST['ResFPaymentID']);
+        $decisionFlag->execute();
+        /* Fetch all of the remaining rows in the result set */
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if (($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['fineCurrencyID'] == '' || $rpt[0]['fineCurrencyID'] == null)) {
+
+            $pdo->rollback();
+            echo "Something went wrong";
+            exit();
+        } else {
+            $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur->bindParam(':accountID', $_POST['Fine_account_id']);
+            $getAccCur->execute();
+            /* Fetch all of the remaining rows in the result set */
+            $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
+            if ($accCur[0]['account_Name'] == "Cash") {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+                        residenceFinePayment, remarks) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,
+                        :residenceFinePayment, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Fine_payAmount']);
+                $stmt->bindParam(':currencyID', $rpt[0]['fineCurrencyID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Fine_account_id']);
+                $stmt->bindParam(':residenceFinePayment', $_POST['ResFPaymentID']);
+                $stmt->bindParam(':remarks', $_POST['Fine_remarks']);
+            } else if ($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] ==  $rpt[0]['fineCurrencyID']) {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+                        residenceFinePayment, remarks) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,
+                        :residenceFinePayment, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Fine_payAmount']);
+                $stmt->bindParam(':currencyID', $rpt[0]['fineCurrencyID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Fine_account_id']);
+                $stmt->bindParam(':residenceFinePayment', $_POST['ResFPaymentID']);
+                $stmt->bindParam(':remarks', $_POST['Fine_remarks']);
+            } else {
+                $pdo->rollback();
+                echo "Currencies does not match! Please select account that its currency match with the sale price currency";
+                exit();
+            }
+
+            // execute the prepared statement
+            $stmt->execute();
+            // create prepared statement
+            $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
                     FROM residencefine WHERE residencefine.residenceID = :resID)) - ((SELECT 
                     IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
                     :resID) + (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments INNER JOIN 
                     residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment WHERE 
                     residencefine.residenceID = :resID)) AS total FROM residence WHERE residence.residenceID = :resID";
-                    $checkTotalStmt = $pdo->prepare($checkTotal);
-                    $checkTotalStmt->bindParam(':resID', $rpt[0]['residenceID']);
-                    $checkTotalStmt->execute();
-                    $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
-                    if($total[0]['total'] == 0){
-                        $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
-                        $updateLockTranStmt = $pdo->prepare($updateLockTran);
-                        $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
-                        $updateLockTranStmt->execute();
-                    }
-                    $pdo->commit(); 
-                    echo "Success";
-                }
-        } catch (PDOException $e) {
-            $pdo->rollback();
-            echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+            $checkTotalStmt = $pdo->prepare($checkTotal);
+            $checkTotalStmt->bindParam(':resID', $rpt[0]['residenceID']);
+            $checkTotalStmt->execute();
+            $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
+            if ($total[0]['total'] == 0) {
+                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+                $updateLockTranStmt = $pdo->prepare($updateLockTran);
+                $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
+                $updateLockTranStmt->execute();
+            }
+            $pdo->commit();
+            
+            // Check if email should be sent
+            if (isset($_POST['SendEmail']) && $_POST['SendEmail'] === true) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'Success',
+                    'message' => 'Payment saved successfully. Note: Email functionality is not yet available for fine payments.'
+                ]);
+            } else {
+                echo "Success";
+            }
         }
-         
-    }else if(isset($_POST['GetFineTotal'])){
-        $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(Remaining_Fine),0) AS RF FROM(SELECT 
+    } catch (PDOException $e) {
+        $pdo->rollback();
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['INSERT_FINE_PAYMENT_EMAIL'])) {
+    try {
+        // Begin transaction
+        $pdo->beginTransaction();
+        
+        $Fine_payAmount = $_POST['Fine_payAmount'];
+        $resFPaymentID = $_POST['ResFPaymentID'];
+        $fine_account_id = $_POST['Fine_account_id'];
+        $fine_remarks = $_POST['Fine_remarks'];
+        
+        // First, get the fine, residence and customer info to include in email
+        $getInfoQuery = "SELECT 
+                        customer.customer_id, 
+                        customer.customer_name, 
+                        customer.customer_email, 
+                        residence.passenger_name,
+                        residence.residenceID,
+                        residencefine.fineAmount,
+                        residencefine.fineCurrencyID,
+                        currency.currencyName,
+                        customer.customer_phone
+                    FROM residencefine
+                    INNER JOIN residence ON residence.residenceID = residencefine.residenceID
+                    INNER JOIN customer ON customer.customer_id = residence.customer_id
+                    INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID
+                    WHERE residencefine.residenceFineID = :resFPaymentID";
+        
+        $getInfoStmt = $pdo->prepare($getInfoQuery);
+        $getInfoStmt->bindParam(':resFPaymentID', $resFPaymentID);
+        $getInfoStmt->execute();
+        $customerInfo = $getInfoStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$customerInfo) {
+            throw new Exception("Customer information not found");
+        }
+        
+        // Check account currency compatibility
+        $getAccCur = $pdo->prepare("SELECT account_Name, curID FROM `accounts` WHERE account_ID = :accountID");
+        $getAccCur->bindParam(':accountID', $fine_account_id);
+        $getAccCur->execute();
+        $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
+        
+        if ($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] != $customerInfo['fineCurrencyID']) {
+            throw new Exception("Currencies do not match! Please select an account with matching currency.");
+        }
+        
+        // Continue with payment insertion
+        $insertPaymentQuery = "INSERT INTO `customer_payments`(
+                            `customer_id`,
+                            `payment_amount`,
+                            `currencyID`, 
+                            `staff_id`,
+                            `accountID`,
+                            `residenceFinePayment`, 
+                            `remarks`) 
+                        VALUES (
+                            :customer_id, 
+                            :payment_amount,
+                            :currencyID,
+                            :staff_id,
+                            :accountID,
+                            :residenceFinePayment,
+                            :remarks)";
+                            
+        $insertStmt = $pdo->prepare($insertPaymentQuery);
+        $insertStmt->bindParam(':customer_id', $customerInfo['customer_id']);
+        $insertStmt->bindParam(':payment_amount', $Fine_payAmount);
+        $insertStmt->bindParam(':currencyID', $customerInfo['fineCurrencyID']);
+        $insertStmt->bindParam(':staff_id', $_SESSION['user_id']);
+        $insertStmt->bindParam(':accountID', $fine_account_id);
+        $insertStmt->bindParam(':residenceFinePayment', $resFPaymentID);
+        $insertStmt->bindParam(':remarks', $fine_remarks);
+        $insertStmt->execute();
+        
+        // Check if total payment equals total residence + fine cost, if so update islocked
+        $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
+                FROM residencefine WHERE residencefine.residenceID = :resID)) - ((SELECT 
+                IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
+                :resID) + (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments INNER JOIN 
+                residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment WHERE 
+                residencefine.residenceID = :resID)) AS total FROM residence WHERE residence.residenceID = :resID";
+                
+        $checkTotalStmt = $pdo->prepare($checkTotal);
+        $checkTotalStmt->bindParam(':resID', $customerInfo['residenceID']);
+        $checkTotalStmt->execute();
+        $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        if ($total[0]['total'] == 0) {
+            $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+            $updateLockTranStmt = $pdo->prepare($updateLockTran);
+            $updateLockTranStmt->bindParam(':resID', $customerInfo['residenceID']);
+            $updateLockTranStmt->execute();
+        }
+        
+        // Send email notification
+        $success = true;
+        $emailMsg = "";
+        
+        if (!empty($customerInfo['customer_email'])) {
+            // Use PHPMailer to send email
+            require 'vendor/autoload.php';
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'selabnadirydxb@gmail.com';
+                $mail->Password = 'qyzuznoxbrfmjvxa';
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+                
+                // Format current date/time for email
+                $paymentDate = date('d M Y, h:i A');
+                
+                // Sender and recipient
+                $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
+                $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
+                
+                // Email content
+                $mail->isHTML(true);
+                $mail->Subject = 'Fine Payment Confirmation - SN Travels';
+                
+                // Build email body with payment details
+                $emailBody = "
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset='utf-8'>
+                        <meta name='viewport' content='width=device-width, initial-scale=1'>
+                        <title>Fine Payment Confirmation</title>
+                        <style>
+                            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+                            
+                            body { 
+                                font-family: 'Poppins', Arial, sans-serif; 
+                                line-height: 1.6; 
+                                color: #444; 
+                                margin: 0;
+                                padding: 0;
+                                background-color: #f9f9f9;
+                            }
+                            
+                            .email-container {
+                                max-width: 600px;
+                                margin: 0 auto;
+                                background-color: #ffffff;
+                                border-radius: 8px;
+                                overflow: hidden;
+                                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                            }
+                            
+                            .email-header {
+                                background: #000000;
+                                color: white;
+                                padding: 30px 20px;
+                                text-align: center;
+                            }
+                            
+                            .email-header h2 {
+                                margin: 0;
+                                font-weight: 600;
+                                font-size: 24px;
+                                letter-spacing: 0.5px;
+                            }
+                            
+                            .logo {
+                                margin-bottom: 15px;
+                                font-weight: 700;
+                                font-size: 28px;
+                                color: white;
+                            }
+                            
+                            .email-content {
+                                padding: 30px;
+                            }
+                            
+                            .greeting {
+                                font-size: 18px;
+                                margin-bottom: 15px;
+                                color: #333;
+                            }
+                            
+                            .message {
+                                margin-bottom: 25px;
+                                color: #555;
+                            }
+                            
+                            .section-title {
+                                font-size: 18px;
+                                font-weight: 600;
+                                margin-bottom: 15px;
+                                color: #ff423e;
+                                border-bottom: 2px solid #ff423e;
+                                padding-bottom: 5px;
+                                display: inline-block;
+                            }
+                            
+                            .details-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 30px;
+                                border-radius: 6px;
+                                overflow: hidden;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                            }
+                            
+                            .details-table th {
+                                background-color: #f2f2f2;
+                                padding: 12px 15px;
+                                text-align: left;
+                                font-weight: 600;
+                                color: #333;
+                                border-bottom: 1px solid #ddd;
+                            }
+                            
+                            .details-table td {
+                                padding: 12px 15px;
+                                text-align: left;
+                                border-bottom: 1px solid #eee;
+                            }
+                            
+                            .details-table tr:last-child td {
+                                border-bottom: none;
+                            }
+                            
+                            .highlight {
+                                font-weight: 600;
+                                color: #ff423e;
+                                font-size: 16px;
+                            }
+                            
+                            .contact-info {
+                                background-color: #f9f9f9;
+                                padding: 20px;
+                                border-radius: 6px;
+                                margin-bottom: 25px;
+                            }
+                            
+                            .contact-info p {
+                                margin: 5px 0;
+                            }
+                            
+                            .contact-label {
+                                font-weight: 600;
+                                color: #666;
+                                width: 50px;
+                                display: inline-block;
+                            }
+                            
+                            .thank-you {
+                                margin: 25px 0;
+                                font-weight: 500;
+                            }
+                            
+                            .signature {
+                                margin-top: 15px;
+                                color: #555;
+                            }
+                            
+                            .email-footer {
+                                background-color: #333;
+                                color: white;
+                                text-align: center;
+                                padding: 20px;
+                                font-size: 12px;
+                            }
+                            
+                            .email-footer p {
+                                margin: 5px 0;
+                                color: #ccc;
+                            }
+                            
+                            @media only screen and (max-width: 600px) {
+                                .email-container {
+                                    width: 100% !important;
+                                    border-radius: 0;
+                                }
+                                
+                                .email-content {
+                                    padding: 20px 15px;
+                                }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class='email-container'>
+                            <div class='email-header'>
+                                <div class='logo'>SN TRAVELS</div>
+                                <h2>Fine Payment Confirmation</h2>
+                            </div>
+                            
+                            <div class='email-content'>
+                                <p class='greeting'>Dear {$customerInfo['customer_name']},</p>
+                                
+                                <p class='message'>Thank you for your fine payment. We are pleased to confirm that we have received your payment successfully.</p>
+                                
+                                <h3 class='section-title'>Payment Details</h3>
+                                
+                                <table class='details-table'>
+                                    <tr>
+                                        <th>Payment Date</th>
+                                        <td>{$paymentDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Passenger Name</th>
+                                        <td>{$customerInfo['passenger_name']}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Amount Paid</th>
+                                        <td class='highlight'>{$Fine_payAmount} {$customerInfo['currencyName']}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Payment Type</th>
+                                        <td>Residence Fine Payment</td>
+                                    </tr>";
+                
+                // Add remarks to email if provided
+                if(!empty($fine_remarks)) {
+                    $emailBody .= "
+                                    <tr>
+                                        <th>Remarks</th>
+                                        <td>{$fine_remarks}</td>
+                                    </tr>";
+                }
+                
+                $emailBody .= "
+                                </table>
+                                
+                                <div class='contact-info'>
+                                    <p>If you have any questions or need further assistance, please contact us:</p>
+                                    <p><span class='contact-label'>Phone:</span> +97143237879</p>
+                                    <p><span class='contact-label'>Email:</span> info@sntrips.com</p>
+                                </div>
+                                
+                                <p class='thank-you'>Thank you for choosing SN Travels.</p>
+                                
+                                <div class='signature'>
+                                    Best regards,<br>
+                                    SN Travels Team
+                                </div>
+                            </div>
+                            
+                            <div class='email-footer'>
+                                <p>This is an automated email. Please do not reply to this message.</p>
+                                <p>&copy; " . date('Y') . " SN Travels & Tourism L.L.C. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>";
+
+                $mail->Body = $emailBody;
+                $mail->AltBody = "Fine payment confirmation for {$customerInfo['passenger_name']}. Amount: {$Fine_payAmount} {$customerInfo['currencyName']}. Date: {$paymentDate}. Contact us at +97143237879 or info@sntrips.com";
+
+                $mail->send();
+                $emailMsg = "Email sent successfully to {$customerInfo['customer_email']}";
+            } catch (Exception $e) {
+                $success = false;
+                $emailMsg = "Failed to send email: " . $mail->ErrorInfo;
+            }
+        } else {
+            $success = false;
+            $emailMsg = "Customer email not available";
+        }
+        
+        $pdo->commit();
+        
+        // Return JSON response
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'Success',
+            'message' => 'Fine payment saved successfully. ' . ($success ? $emailMsg : 'Note: ' . $emailMsg),
+            'email_sent' => $success
+        ]);
+        
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'Error',
+            'message' => "Failed to process payment: " . $e->getMessage()
+        ]);
+    }
+} else if (isset($_POST['GetFineTotal'])) {
+    $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(Remaining_Fine),0) AS RF FROM(SELECT 
         currency.currencyName ,IFNULL(SUM(residencefine.fineAmount),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) 
         FROM customer_payments WHERE customer_payments.residenceFinePayment = residencefine.residenceFineID) AS Remaining_Fine 
         FROM residencefine INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID WHERE 
         residencefine.residenceID = :resID GROUP BY residencefine.residenceFineID) AS baseTable GROUP BY currencyName HAVING RF 
         !=0 ORDER BY currencyName ASC");
-        $selectQuery->bindParam(':resID', $_POST['ID']);
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['GetTotalResidencePendingP'])){
-        getTotalResidencePendingP();
-    }else if(isset($_POST['GetSearchResult'])){
-        $searchTerm = '%'.  str_replace(' ', '',strtolower($_POST['SearchTerm'])) . '%'; 
-        $selectQuery = $pdo->prepare("SELECT 1 AS identifier, customer_id AS customer_id, customer_name AS customer_name, '' AS
+    $selectQuery->bindParam(':resID', $_POST['ID']);
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['GetTotalResidencePendingP'])) {
+    getTotalResidencePendingP();
+} else if (isset($_POST['GetSearchResult'])) {
+    $searchTerm = '%' .  str_replace(' ', '', strtolower($_POST['SearchTerm'])) . '%';
+    $selectQuery = $pdo->prepare("SELECT 1 AS identifier, customer_id AS customer_id, customer_name AS customer_name, '' AS
         passenger_name FROM customer WHERE REPLACE(LOWER(customer_name), ' ', '') LIKE :searchTerm UNION ALL SELECT DISTINCT 2 AS
         identifier, customer.customer_id AS customer_id, customer_name AS customer_name, passenger_name AS passenger_name FROM 
         residence INNER JOIN customer ON customer.customer_id = residence.customer_id WHERE REPLACE(LOWER(passenger_name), ' ','')
         LIKE :searchTerm");
-        $selectQuery->bindParam(':searchTerm', $searchTerm);
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['GetCustomerCurrencyForSearch'])){
-        $passengerName =  str_replace(' ', '',strtolower($_POST['PassengerName'])); 
-        if($_POST['PassengerName'] != 'null'){
-            $selectQuery = $pdo->prepare("SELECT DISTINCT currency.currencyID, currency.currencyName FROM currency INNER JOIN 
+    $selectQuery->bindParam(':searchTerm', $searchTerm);
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['GetCustomerCurrencyForSearch'])) {
+    $passengerName =  str_replace(' ', '', strtolower($_POST['PassengerName']));
+    if ($_POST['PassengerName'] != 'null') {
+        $selectQuery = $pdo->prepare("SELECT DISTINCT currency.currencyID, currency.currencyName FROM currency INNER JOIN 
             residence ON residence.saleCurID = currency.currencyID WHERE residence.customer_id = :customerID AND 
             REPLACE(LOWER(passenger_name),' ','') = :passengerName ORDER BY currency.currencyName ASC");
-            $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
-            $selectQuery->bindParam(':passengerName', $passengerName);
-        }else{
-            $selectQuery = $pdo->prepare("SELECT DISTINCT currency.currencyID, currency.currencyName FROM currency INNER JOIN 
+        $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
+        $selectQuery->bindParam(':passengerName', $passengerName);
+    } else {
+        $selectQuery = $pdo->prepare("SELECT DISTINCT currency.currencyID, currency.currencyName FROM currency INNER JOIN 
             residence ON residence.saleCurID = currency.currencyID WHERE residence.customer_id = :customerID ORDER BY 
             currency.currencyName ASC");
-            $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
-        }
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['GetAbstrictView'])){
-        $passengerName =  str_replace(' ', '',strtolower($_POST['PassengerName'])); 
-        if($_POST['PassengerName'] != 'null'){
-            $selectQuery = $pdo->prepare("SELECT currency.currencyName,IFNULL(SUM(residence.sale_price),0) AS total_residenceCost,
+        $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
+    }
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['GetAbstrictView'])) {
+    $passengerName =  str_replace(' ', '', strtolower($_POST['PassengerName']));
+    if ($_POST['PassengerName'] != 'null') {
+        $selectQuery = $pdo->prepare("SELECT currency.currencyName,IFNULL(SUM(residence.sale_price),0) AS total_residenceCost,
             (SELECT IFNULL(SUM(residencefine.fineAmount),0) FROM residencefine INNER JOIN residence ON residence.residenceID = 
             residencefine.residenceID WHERE residence.customer_id = :customerID AND REPLACE(LOWER(passenger_name),' ','') = 
             :passengerName AND residencefine.fineCurrencyID = :currencyID AND residence.islocked = 0) AS residenceFine, (SELECT 
@@ -829,11 +1222,11 @@
             INNER JOIN currency ON currency.currencyID = residence.saleCurID WHERE residence.customer_id = :customerID AND 
             REPLACE(LOWER(passenger_name),' ','') = :passengerName AND residence.saleCurID = :currencyID AND residence.islocked = 
             0");
-            $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
-            $selectQuery->bindParam(':passengerName', $passengerName);
-            $selectQuery->bindParam(':currencyID', $_POST['ResidenceCurrency']);
-        }else{
-            $selectQuery = $pdo->prepare("SELECT currency.currencyName,IFNULL(SUM(residence.sale_price),0) AS total_residenceCost,
+        $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
+        $selectQuery->bindParam(':passengerName', $passengerName);
+        $selectQuery->bindParam(':currencyID', $_POST['ResidenceCurrency']);
+    } else {
+        $selectQuery = $pdo->prepare("SELECT currency.currencyName,IFNULL(SUM(residence.sale_price),0) AS total_residenceCost,
             (SELECT IFNULL(SUM(residencefine.fineAmount),0) FROM residencefine INNER JOIN residence ON residence.residenceID = 
             residencefine.residenceID WHERE residence.customer_id = :customerID AND residencefine.fineCurrencyID = :currencyID AND
             residence.islocked = 0) AS residenceFine, (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM 
@@ -845,18 +1238,18 @@
             customer_payments.currencyID = :currencyID AND residence.islocked = 0) AS total_fine_payment FROM residence INNER JOIN
             currency ON currency.currencyID = residence.saleCurID WHERE residence.customer_id = :customerID AND residence.saleCurID
             = :currencyID AND residence.islocked = 0");
-            $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
-            $selectQuery->bindParam(':currencyID', $_POST['ResidenceCurrency']);
-        }
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['GetResidenceLedger'])){
-        $passengerName =  str_replace(' ', '',strtolower($_POST['PassengerName'])); 
-        if($_POST['PassengerName'] != 'null'){
-            $selectQuery = $pdo->prepare("SELECT 'Residence application' AS transactionType, passenger_name AS passenger_name, 
+        $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
+        $selectQuery->bindParam(':currencyID', $_POST['ResidenceCurrency']);
+    }
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['GetResidenceLedger'])) {
+    $passengerName =  str_replace(' ', '', strtolower($_POST['PassengerName']));
+    if ($_POST['PassengerName'] != 'null') {
+        $selectQuery = $pdo->prepare("SELECT 'Residence application' AS transactionType, passenger_name AS passenger_name, 
             DATE_FORMAT(DATE(residence.datetime),'%d-%b-%Y') AS dt,DATE(residence.datetime) AS OrderDate, 
             country_name.country_names AS visaType, residence.sale_price AS debit, 0 AS credit FROM residence INNER JOIN 
             country_name ON residence.VisaType = country_name.country_id WHERE residence.customer_id = :customerID  AND 
@@ -881,11 +1274,11 @@
             residence.VisaType WHERE customer_payments.customer_id = :customerID AND 
             REPLACE(LOWER(residence.passenger_name), ' ','') = :passengerName AND customer_payments.currencyID = :currencyID AND
             residence.islocked = 0 ORDER BY orderDate, passenger_name, transactionType");
-            $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
-            $selectQuery->bindParam(':passengerName', $passengerName);
-            $selectQuery->bindParam(':currencyID', $_POST['CurID']);
-        }else{
-            $selectQuery = $pdo->prepare("SELECT 'Residence application' AS transactionType, passenger_name AS passenger_name, 
+        $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
+        $selectQuery->bindParam(':passengerName', $passengerName);
+        $selectQuery->bindParam(':currencyID', $_POST['CurID']);
+    } else {
+        $selectQuery = $pdo->prepare("SELECT 'Residence application' AS transactionType, passenger_name AS passenger_name, 
             DATE_FORMAT(DATE(residence.datetime),'%d-%b-%Y') AS dt,DATE(residence.datetime) AS OrderDate, 
             country_name.country_names AS visaType, residence.sale_price AS debit, 0 AS credit FROM residence INNER JOIN 
             country_name ON residence.VisaType = country_name.country_id WHERE residence.customer_id = :customerID AND 
@@ -907,16 +1300,16 @@
             residence ON residence.residenceID = residencefine.residenceID INNER JOIN country_name ON country_name.country_id =
             residence.VisaType WHERE customer_payments.customer_id = :customerID AND customer_payments.currencyID = :currencyID 
             AND residence.islocked = 0 ORDER BY orderDate, passenger_name, transactionType");
-            $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
-            $selectQuery->bindParam(':currencyID', $_POST['CurID']);
-        }
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }else if(isset($_POST['GetPaymentHistory'])){
-        $selectQuery = $pdo->prepare("SELECT 
+        $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
+        $selectQuery->bindParam(':currencyID', $_POST['CurID']);
+    }
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+} else if (isset($_POST['GetPaymentHistory'])) {
+    $selectQuery = $pdo->prepare("SELECT 
             customer_payments.pay_id as paymentID,
             DATE_FORMAT(customer_payments.datetime, '%d-%b-%Y') as payment_date,
             customer_payments.payment_amount as amount,
@@ -934,134 +1327,284 @@
         INNER JOIN staff ON staff.staff_id = customer_payments.staff_id
         WHERE customer_payments.PaymentFor = :resID
         ORDER BY customer_payments.datetime DESC");
-        
-        $selectQuery->bindParam(':resID', $_POST['ID']);
-        $selectQuery->execute();
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        echo json_encode($data);
-    }else if(isset($_POST['GetBanks'])){
-        getBanks();
-    }else if(isset($_POST['Insert_Payment_Email'])){
-        try {
-            $pdo->beginTransaction();
-                
-            $Payment = $_POST['Payment'];
-            $resID = $_POST['ResID'];
-            $Account_ID = $_POST['Account_ID'];
-            $remarks = $_POST['Remarks'];
-            
-            // First, get the residence and customer info to include in email
-            $getInfoQuery = "SELECT customer.customer_id, customer.customer_name, customer.customer_email, residence.passenger_name, 
+
+    $selectQuery->bindParam(':resID', $_POST['ID']);
+    $selectQuery->execute();
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    echo json_encode($data);
+} else if (isset($_POST['GetBanks'])) {
+    getBanks();
+} else if (isset($_POST['Insert_Payment_Email'])) {
+    try {
+        $pdo->beginTransaction();
+
+        $Payment = $_POST['Payment'];
+        $resID = $_POST['ResID'];
+        $Account_ID = $_POST['Account_ID'];
+        $remarks = $_POST['Remarks'];
+
+        // First, get the residence and customer info to include in email
+        $getInfoQuery = "SELECT customer.customer_id, customer.customer_name, customer.customer_email, residence.passenger_name, 
                         residence.sale_price, currency.currencyName, customer.customer_phone, residence.saleCurID
                         FROM residence 
                         INNER JOIN customer ON customer.customer_id = residence.customer_id
                         INNER JOIN currency ON currency.currencyID = residence.saleCurID
                         WHERE residence.residenceID = :resID";
-            $getInfoStmt = $pdo->prepare($getInfoQuery);
-            $getInfoStmt->bindParam(':resID', $resID);
-            $getInfoStmt->execute();
-            $customerInfo = $getInfoStmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$customerInfo) {
-                throw new Exception("Customer information not found");
-            }
-            
-            // Continue with payment insertion
-            $insertPaymentQuery = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+        $getInfoStmt = $pdo->prepare($getInfoQuery);
+        $getInfoStmt->bindParam(':resID', $resID);
+        $getInfoStmt->execute();
+        $customerInfo = $getInfoStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$customerInfo) {
+            throw new Exception("Customer information not found");
+        }
+
+        // Continue with payment insertion
+        $insertPaymentQuery = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
                             PaymentFor, remarks) VALUES (:customer_id, :payment, :currencyID, :staff_id, :accountID, :resID, :remarks)";
-            $insertStmt = $pdo->prepare($insertPaymentQuery);
-            $insertStmt->bindParam(':customer_id', $customerInfo['customer_id']);
-            $insertStmt->bindParam(':payment', $Payment);
-            $insertStmt->bindParam(':currencyID', $customerInfo['saleCurID']);
-            $insertStmt->bindParam(':staff_id', $_SESSION['user_id']);
-            $insertStmt->bindParam(':accountID', $Account_ID);
-            $insertStmt->bindParam(':resID', $resID);
-            $insertStmt->bindParam(':remarks', $remarks);
-            $insertStmt->execute();
-            
-            // Check if total payment equals sale price, if so update completedStep if needed
-            $paymentQuery = "SELECT IFNULL(SUM(payment_amount),0) AS total FROM `customer_payments` WHERE PaymentFor = :resID";
-            $paymentStmt = $pdo->prepare($paymentQuery);
-            $paymentStmt->bindParam(':resID', $resID);
-            $paymentStmt->execute();
-            $total = $paymentStmt->fetchAll(\PDO::FETCH_ASSOC);
-            
-            $residenceQuery = "SELECT * FROM residence WHERE residenceID = :resID";
-            $residenceStmt = $pdo->prepare($residenceQuery);
-            $residenceStmt->bindParam(':resID', $resID);
-            $residenceStmt->execute();
-            $rpt = $residenceStmt->fetchAll(\PDO::FETCH_ASSOC);
-            
-            if($total[0]['total'] >= $rpt[0]['sale_price'] && $rpt[0]['completedStep'] < 10 && $rpt[0]['completedStep'] >= 6){
-                $update = "UPDATE residence SET completedStep = 10 WHERE residenceID = :resID";
-                $updateStmt = $pdo->prepare($update);
-                $updateStmt->bindParam(':resID', $resID);
-                $updateStmt->execute();
-            }
-            
-            if($total[0]['total'] == 0){
-                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
-                $updateLockTranStmt = $pdo->prepare($updateLockTran);
-                $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
-                $updateLockTranStmt->execute();
-            }
-            
-            // Send email notification
-            $success = true;
-            $emailMsg = "";
-            
-            if (!empty($customerInfo['customer_email'])) {
-                // Use PHPMailer to send email
-                require 'vendor/autoload.php';
-                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                
-                try {
-                    $mail->isSMTP();
-                    $mail->Host = 'smtp.gmail.com';
-                    $mail->SMTPAuth = true;
-                    $mail->Username = 'selabnadirydxb@gmail.com';
-                    $mail->Password = 'qyzuznoxbrfmjvxa';
-                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port = 587;
-                    
-                    // Format current date/time for email
-                    $paymentDate = date('d M Y, h:i A');
-                    
-                    // Sender and recipient
-                    $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
-                    $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
-                    
-                    // Email content
-                    $mail->isHTML(true);
-                    $mail->Subject = 'Payment Confirmation - SN Travels';
-                    
-                    // Build email body with payment details
-                    $emailBody = "
+        $insertStmt = $pdo->prepare($insertPaymentQuery);
+        $insertStmt->bindParam(':customer_id', $customerInfo['customer_id']);
+        $insertStmt->bindParam(':payment', $Payment);
+        $insertStmt->bindParam(':currencyID', $customerInfo['saleCurID']);
+        $insertStmt->bindParam(':staff_id', $_SESSION['user_id']);
+        $insertStmt->bindParam(':accountID', $Account_ID);
+        $insertStmt->bindParam(':resID', $resID);
+        $insertStmt->bindParam(':remarks', $remarks);
+        $insertStmt->execute();
+
+        // Check if total payment equals sale price, if so update completedStep if needed
+        $paymentQuery = "SELECT IFNULL(SUM(payment_amount),0) AS total FROM `customer_payments` WHERE PaymentFor = :resID";
+        $paymentStmt = $pdo->prepare($paymentQuery);
+        $paymentStmt->bindParam(':resID', $resID);
+        $paymentStmt->execute();
+        $total = $paymentStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $residenceQuery = "SELECT * FROM residence WHERE residenceID = :resID";
+        $residenceStmt = $pdo->prepare($residenceQuery);
+        $residenceStmt->bindParam(':resID', $resID);
+        $residenceStmt->execute();
+        $rpt = $residenceStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if ($total[0]['total'] >= $rpt[0]['sale_price'] && $rpt[0]['completedStep'] < 10 && $rpt[0]['completedStep'] >= 6) {
+            $update = "UPDATE residence SET completedStep = 10 WHERE residenceID = :resID";
+            $updateStmt = $pdo->prepare($update);
+            $updateStmt->bindParam(':resID', $resID);
+            $updateStmt->execute();
+        }
+
+        if ($total[0]['total'] == 0) {
+            $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+            $updateLockTranStmt = $pdo->prepare($updateLockTran);
+            $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
+            $updateLockTranStmt->execute();
+        }
+
+        // Send email notification
+        $success = true;
+        $emailMsg = "";
+
+        if (!empty($customerInfo['customer_email'])) {
+            // Use PHPMailer to send email
+            require 'vendor/autoload.php';
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'selabnadirydxb@gmail.com';
+                $mail->Password = 'qyzuznoxbrfmjvxa';
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                // Format current date/time for email
+                $paymentDate = date('d M Y, h:i A');
+
+                // Sender and recipient
+                $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
+                $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
+
+                // Email content
+                $mail->isHTML(true);
+                $mail->Subject = 'Payment Confirmation - SN Travels';
+
+                // Build email body with payment details - new beautiful template
+                $emailBody = "
+                    <!DOCTYPE html>
                     <html>
                     <head>
+                        <meta charset='utf-8'>
+                        <meta name='viewport' content='width=device-width, initial-scale=1'>
+                        <title>Payment Confirmation</title>
                         <style>
-                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                            .header { background-color: #ff423e; color: white; padding: 15px; text-align: center; }
-                            .content { padding: 20px; border: 1px solid #ddd; border-top: none; }
-                            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
-                            table { width: 100%; border-collapse: collapse; }
-                            th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-                            th { background-color: #f2f2f2; }
-                            .highlight { font-weight: bold; color: #ff423e; }
+                            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+                            
+                            body { 
+                                font-family: 'Poppins', Arial, sans-serif; 
+                                line-height: 1.6; 
+                                color: #444; 
+                                margin: 0;
+                                padding: 0;
+                                background-color: #f9f9f9;
+                            }
+                            
+                            .email-container {
+                                max-width: 600px;
+                                margin: 0 auto;
+                                background-color: #ffffff;
+                                border-radius: 8px;
+                                overflow: hidden;
+                                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                            }
+                            
+                            .email-header {
+                                background: #000000;
+                                color: white;
+                                padding: 30px 20px;
+                                text-align: center;
+                            }
+                            
+                            .email-header h2 {
+                                margin: 0;
+                                font-weight: 600;
+                                font-size: 24px;
+                                letter-spacing: 0.5px;
+                            }
+                            
+                            .logo {
+                                margin-bottom: 15px;
+                                font-weight: 700;
+                                font-size: 28px;
+                                color: white;
+                            }
+                            
+                            .email-content {
+                                padding: 30px;
+                            }
+                            
+                            .greeting {
+                                font-size: 18px;
+                                margin-bottom: 15px;
+                                color: #333;
+                            }
+                            
+                            .message {
+                                margin-bottom: 25px;
+                                color: #555;
+                            }
+                            
+                            .section-title {
+                                font-size: 18px;
+                                font-weight: 600;
+                                margin-bottom: 15px;
+                                color: #ff423e;
+                                border-bottom: 2px solid #ff423e;
+                                padding-bottom: 5px;
+                                display: inline-block;
+                            }
+                            
+                            .details-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 30px;
+                                border-radius: 6px;
+                                overflow: hidden;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                            }
+                            
+                            .details-table th {
+                                background-color: #f2f2f2;
+                                padding: 12px 15px;
+                                text-align: left;
+                                font-weight: 600;
+                                color: #333;
+                                border-bottom: 1px solid #ddd;
+                            }
+                            
+                            .details-table td {
+                                padding: 12px 15px;
+                                text-align: left;
+                                border-bottom: 1px solid #eee;
+                            }
+                            
+                            .details-table tr:last-child td {
+                                border-bottom: none;
+                            }
+                            
+                            .highlight {
+                                font-weight: 600;
+                                color: #ff423e;
+                                font-size: 16px;
+                            }
+                            
+                            .contact-info {
+                                background-color: #f9f9f9;
+                                padding: 20px;
+                                border-radius: 6px;
+                                margin-bottom: 25px;
+                            }
+                            
+                            .contact-info p {
+                                margin: 5px 0;
+                            }
+                            
+                            .contact-label {
+                                font-weight: 600;
+                                color: #666;
+                                width: 50px;
+                                display: inline-block;
+                            }
+                            
+                            .thank-you {
+                                margin: 25px 0;
+                                font-weight: 500;
+                            }
+                            
+                            .signature {
+                                margin-top: 15px;
+                                color: #555;
+                            }
+                            
+                            .email-footer {
+                                background-color: #333;
+                                color: white;
+                                text-align: center;
+                                padding: 20px;
+                                font-size: 12px;
+                            }
+                            
+                            .email-footer p {
+                                margin: 5px 0;
+                                color: #ccc;
+                            }
+                            
+                            @media only screen and (max-width: 600px) {
+                                .email-container {
+                                    width: 100% !important;
+                                    border-radius: 0;
+                                }
+                                
+                                .email-content {
+                                    padding: 20px 15px;
+                                }
+                            }
                         </style>
                     </head>
                     <body>
-                        <div class='container'>
-                            <div class='header'>
+                        <div class='email-container'>
+                            <div class='email-header'>
+                                <div class='logo'>SN TRAVELS</div>
                                 <h2>Payment Confirmation</h2>
                             </div>
-                            <div class='content'>
-                                <p>Dear {$customerInfo['customer_name']},</p>
-                                <p>Thank you for your payment. We are pleased to confirm that we have received your payment successfully.</p>
+                            
+                            <div class='email-content'>
+                                <p class='greeting'>Dear {$customerInfo['customer_name']},</p>
                                 
-                                <h3>Payment Details:</h3>
-                                <table>
+                                <p class='message'>Thank you for your payment. We are pleased to confirm that we have received your payment successfully.</p>
+                                
+                                <h3 class='section-title'>Payment Details</h3>
+                                
+                                <table class='details-table'>
                                     <tr>
                                         <th>Payment Date</th>
                                         <td>{$paymentDate}</td>
@@ -1077,94 +1620,111 @@
                                     <tr>
                                         <th>Payment Type</th>
                                         <td>Residence Payment</td>
-                                    </tr>
+                                    </tr>";
+                
+                // Add remarks to email if provided
+                if(!empty($remarks)) {
+                    $emailBody .= "
+                                    <tr>
+                                        <th>Remarks</th>
+                                        <td>{$remarks}</td>
+                                    </tr>";
+                }
+                
+                $emailBody .= "
                                 </table>
                                 
-                                <p>If you have any questions or need further assistance, please contact us at:</p>
-                                <p>Phone: +971-4-293-9477</p>
-                                <p>Email: info@sntrips.com</p>
+                                <div class='contact-info'>
+                                    <p>If you have any questions or need further assistance, please contact us:</p>
+                                    <p><span class='contact-label'>Phone:</span> +97143237879</p>
+                                    <p><span class='contact-label'>Email:</span> info@sntrips.com</p>
+                                </div>
                                 
-                                <p>Thank you for choosing SN Travels.</p>
-                                <p>Best regards,<br>SN Travels Team</p>
+                                <p class='thank-you'>Thank you for choosing SN Travels.</p>
+                                
+                                <div class='signature'>
+                                    Best regards,<br>
+                                    SN Travels Team
+                                </div>
                             </div>
-                            <div class='footer'>
+                            
+                            <div class='email-footer'>
                                 <p>This is an automated email. Please do not reply to this message.</p>
-                                <p>&copy; " . date('Y') . " SN Travels. All rights reserved.</p>
+                                <p>&copy; " . date('Y') . " SN Travels & Tourism L.L.C. All rights reserved.</p>
                             </div>
                         </div>
                     </body>
                     </html>";
-                    
-                    $mail->Body = $emailBody;
-                    $mail->AltBody = "Payment confirmation for {$customerInfo['passenger_name']}. Amount: {$Payment} {$customerInfo['currencyName']}. Date: {$paymentDate}";
-                    
-                    $mail->send();
-                    $emailMsg = "Email sent successfully to {$customerInfo['customer_email']}";
-                } catch (Exception $e) {
-                    $success = false;
-                    $emailMsg = "Failed to send email: " . $mail->ErrorInfo;
-                }
-            } else {
+
+                $mail->Body = $emailBody;
+                $mail->AltBody = "Payment confirmation for {$customerInfo['passenger_name']}. Amount: {$Payment} {$customerInfo['currencyName']}. Date: {$paymentDate}. Contact us at +97143237879 or info@sntrips.com";
+
+                $mail->send();
+                $emailMsg = "Email sent successfully to {$customerInfo['customer_email']}";
+            } catch (Exception $e) {
                 $success = false;
-                $emailMsg = "Customer email not available";
+                $emailMsg = "Failed to send email: " . $mail->ErrorInfo;
             }
-            
-            $pdo->commit();
-            
-            // Return JSON response
-            header('Content-Type: application/json');
-            echo json_encode([
-                'status' => 'Success',
-                'message' => 'Payment saved successfully. ' . ($success ? $emailMsg : 'Note: ' . $emailMsg),
-                'email_sent' => $success
-            ]);
-            
-        } catch (Exception $e) {
-            $pdo->rollback();
-            
-            header('Content-Type: application/json');
-            echo json_encode([
-                'status' => 'Error',
-                'message' => "Failed to process payment: " . $e->getMessage()
-            ]);
+        } else {
+            $success = false;
+            $emailMsg = "Customer email not available";
         }
+
+        $pdo->commit();
+
+        // Return JSON response
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'Success',
+            'message' => 'Payment saved successfully. ' . ($success ? $emailMsg : 'Note: ' . $emailMsg),
+            'email_sent' => $success
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollback();
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'Error',
+            'message' => "Failed to process payment: " . $e->getMessage()
+        ]);
     }
-    function uploadExtraDocs(){
-        $new_image_name = '';
-        if($_FILES['Chargesuploader']['size']<=2097152){
-            $extension = explode(".", $_FILES['Chargesuploader']['name']);
-            $f_name = '';
-            $f_ext = '';
-            if(count($extension) > 2){
-                for($i = 0; $i< count($extension); $i++){
-                    if(count($extension) == $extension[$i]){
-                        $f_name  = $f_name . $extension[$i];
-                    }else{
-                        $f_ext = $extension[$i];
-                    }
+}
+function uploadExtraDocs()
+{
+    $new_image_name = '';
+    if ($_FILES['Chargesuploader']['size'] <= 2097152) {
+        $extension = explode(".", $_FILES['Chargesuploader']['name']);
+        $f_name = '';
+        $f_ext = '';
+        if (count($extension) > 2) {
+            for ($i = 0; $i < count($extension); $i++) {
+                if (count($extension) == $extension[$i]) {
+                    $f_name  = $f_name . $extension[$i];
+        } else {
+                    $f_ext = $extension[$i];
                 }
-               
-            }else{
-                $f_name =  $extension[0];
-                $f_ext = $extension[1];
             }
-            $ext = array("txt", "pdf", "doc", "docx","xls","xlsx","jpg","jpeg","png","ppt");
-            if (in_array(strtolower($f_ext), $ext))
-            {
-                $new_image_name = $f_name . "." . date("Y/m/d h:i:s") . $f_ext;
-                $new_image_name = md5($new_image_name);
-                $new_image_name = 'residence/'. $new_image_name. '.' .$f_ext;
-                $destination = $new_image_name;
-                move_uploaded_file($_FILES['Chargesuploader']['tmp_name'],$destination);
-            }else{
-                $new_image_name = '';
-            }
+    } else {
+            $f_name =  $extension[0];
+            $f_ext = $extension[1];
         }
-        return $new_image_name;
+        $ext = array("txt", "pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "ppt");
+        if (in_array(strtolower($f_ext), $ext)) {
+            $new_image_name = $f_name . "." . date("Y/m/d h:i:s") . $f_ext;
+            $new_image_name = md5($new_image_name);
+            $new_image_name = 'residence/' . $new_image_name . '.' . $f_ext;
+            $destination = $new_image_name;
+            move_uploaded_file($_FILES['Chargesuploader']['tmp_name'], $destination);
+    } else {
+            $new_image_name = '';
+        }
     }
-    function getTotalResidencePendingP(){
-        global $pdo;
-        $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(total),0) AS TotalBalance FROM (SELECT currencyName,
+    return $new_image_name;
+}
+function getTotalResidencePendingP()
+{
+    global $pdo;
+    $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(total),0) AS TotalBalance FROM (SELECT currencyName,
         IFNULL(SUM(residence.sale_price),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE
         customer_payments.PaymentFor IS NOT NULL AND customer_payments.currencyID = residence.saleCurID) AS total FROM residence
         INNER JOIN currency ON currency.currencyID = residence.saleCurID GROUP BY residence.saleCurID UNION ALL SELECT 
@@ -1173,36 +1733,36 @@
         residencefine.fineCurrencyID) AS total FROM residencefine INNER JOIN currency ON currency.currencyID = 
         residencefine.fineCurrencyID GROUP BY residencefine.fineCurrencyID) AS baseTable GROUP BY currencyName HAVING TotalBalance
         != 0 ORDER BY currencyName ASC");
-        $selectQuery->execute();
-        /* Fetch all of the remaining rows in the result set */
-        $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-        // encoding array to json format
-        echo json_encode($data);
-    }
-    function getBanks() {
-        global $pdo;
-        try {
-            // First check if the banks table exists
-            $checkTable = $pdo->prepare("SHOW TABLES LIKE 'banks'");
-            $checkTable->execute();
-            if ($checkTable->rowCount() === 0) {
-                // Return empty array if table doesn't exist
-                echo json_encode([]);
-                return;
-            }
-            
-            // If we get here, the table exists, so get the banks
-            $sql = "SELECT id, bank_name FROM banks ORDER BY bank_name ASC";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute();
-            $banks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            echo json_encode($banks);
-        } catch (PDOException $e) {
-            error_log("Error fetching banks: " . $e->getMessage());
+    $selectQuery->execute();
+    /* Fetch all of the remaining rows in the result set */
+    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
+    // encoding array to json format
+    echo json_encode($data);
+}
+function getBanks()
+{
+    global $pdo;
+    try {
+        // First check if the banks table exists
+        $checkTable = $pdo->prepare("SHOW TABLES LIKE 'banks'");
+        $checkTable->execute();
+        if ($checkTable->rowCount() === 0) {
+            // Return empty array if table doesn't exist
             echo json_encode([]);
+            return;
         }
+
+        // If we get here, the table exists, so get the banks
+        $sql = "SELECT id, bank_name FROM banks ORDER BY bank_name ASC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute();
+        $banks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode($banks);
+    } catch (PDOException $e) {
+        error_log("Error fetching banks: " . $e->getMessage());
+        echo json_encode([]);
     }
-    // Close connection
-    unset($pdo); 
-?>
+}
+// Close connection
+unset($pdo);

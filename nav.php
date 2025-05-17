@@ -14,7 +14,7 @@
         <div id="header" class="app-header app-header-inverse">
             <!-- BEGIN navbar-header -->
             <div class="navbar-header">
-                <img src="/assets/logo-white.png" height="35" class="ms-2" alt="">
+                <img src="assets/logo-white.png" height="35" class="ms-2" alt="">
                 <button type="button" class="navbar-mobile-toggler" data-toggle="app-sidebar-mobile">
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
@@ -30,7 +30,45 @@
                         <span id="digital-clock">00:00:00</span>
                     </div>
                 </div>
-                <!-- END Digital Clock and Dubai Weather -->
+
+                <!-- Staff Attendance Status - Responsive Version -->
+                <div class="navbar-item d-none d-md-block">
+                    <div style="font-family: 'Arial', sans-serif; color: #fff; padding: 5px 15px; position: relative; z-index: 1;">
+                        <span id="my-status-badge" class="badge bg-secondary me-2">Absent</span>
+                        <span>Check-in: <strong id="my-checkin-time">--:--</strong></span>
+                        <span class="mx-2">|</span>
+                        <span>Check-out: <strong id="my-checkout-time">--:--</strong></span>
+                        <span class="mx-2">|</span>
+                        <span>Break: <strong id="my-break-time">--</strong></span>
+                        <small class="ms-2 text-muted">(Dubai Time)</small>
+                    </div>
+                </div>
+                
+                <!-- Mobile Attendance Dropdown -->
+                <div class="navbar-item d-md-none">
+                    <a href="#" data-bs-toggle="dropdown" class="navbar-link dropdown-toggle" title="My Attendance">
+                        <i class="fa fa-clock"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end">
+                        <div class="dropdown-header">My Attendance Status</div>
+                        <div class="dropdown-item">
+                            <span id="mobile-status-badge" class="badge bg-secondary me-2">Absent</span>
+                        </div>
+                        <div class="dropdown-item">
+                            Check-in: <strong id="mobile-checkin-time">--:--</strong>
+                        </div>
+                        <div class="dropdown-item">
+                            Check-out: <strong id="mobile-checkout-time">--:--</strong>
+                        </div>
+                        <div class="dropdown-item">
+                            Break: <strong id="mobile-break-time">--</strong>
+                        </div>
+                        <div class="dropdown-footer text-center">
+                            <small class="text-muted">(Dubai Time)</small>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="navbar-item navbar-form">
                     <form action="" method="POST" name="search">
                         <div class="form-group">
@@ -43,6 +81,11 @@
                 <div class="navbar-item">
                     <a href="chatroom.php" class="navbar-link" title="Chatroom">
                         <i class="fa fa-comments"></i>
+                    </a>
+                </div>
+                <div class="navbar-item">
+                    <a href="attachments.php" class="navbar-link" title="File Attachments">
+                        <i class="fa fa-paperclip"></i>
                     </a>
                 </div>
                 <div class="navbar-item">
@@ -189,7 +232,7 @@
                                 <?php }  ?>
                                 <?php if ($records[1]['select'] == 1) { ?>
                                     <div class="menu-item">
-                                        <a href="view ticket.php" class="menu-link">
+                                        <a href="view_ticket.php" class="menu-link">
                                             <div class="menu-text">Ticket Report</div>
                                         </a>
                                     </div>
@@ -424,6 +467,7 @@
                             </a>
                         </div>
                     <?php } ?>
+                    
                     <?php if ($records[7]['select'] == 1 || $records[7]['insert'] == 1 || $records[8]['select'] == 1) { ?>
                         <div class="menu-item has-sub">
                             <a href="javascript:;" class="menu-link">
@@ -811,6 +855,43 @@
                 }
                 setInterval(updateClock, 1000);
                 updateClock();
+                
+                // Sync attendance status between desktop and mobile views
+                function syncAttendanceDisplays() {
+                    // Status badge
+                    const mainStatus = document.getElementById('my-status-badge');
+                    const mobileStatus = document.getElementById('mobile-status-badge');
+                    if (mainStatus && mobileStatus) {
+                        mobileStatus.textContent = mainStatus.textContent;
+                        mobileStatus.className = mainStatus.className;
+                    }
+                    
+                    // Check-in time
+                    const mainCheckin = document.getElementById('my-checkin-time');
+                    const mobileCheckin = document.getElementById('mobile-checkin-time');
+                    if (mainCheckin && mobileCheckin) {
+                        mobileCheckin.textContent = mainCheckin.textContent;
+                    }
+                    
+                    // Check-out time
+                    const mainCheckout = document.getElementById('my-checkout-time');
+                    const mobileCheckout = document.getElementById('mobile-checkout-time');
+                    if (mainCheckout && mobileCheckout) {
+                        mobileCheckout.textContent = mainCheckout.textContent;
+                    }
+                    
+                    // Break time
+                    const mainBreak = document.getElementById('my-break-time');
+                    const mobileBreak = document.getElementById('mobile-break-time');
+                    if (mainBreak && mobileBreak) {
+                        mobileBreak.textContent = mainBreak.textContent;
+                    }
+                }
+                
+                // Run once on page load
+                document.addEventListener('DOMContentLoaded', syncAttendanceDisplays);
+                // Also sync periodically in case of updates
+                setInterval(syncAttendanceDisplays, 30000);
 
                 // Weather Functionality for Dubai, UAE
                 function fetchDubaiWeather() {
@@ -828,11 +909,17 @@
                             const temp = Math.round(data.main.temp);
                             const condition = data.weather[0].main;
                             const city = "Dubai";
-                            document.getElementById('weather-info').textContent = `${city}: ${temp}°C, ${condition}`;
+                            const weatherElement = document.getElementById('weather-info');
+                            if (weatherElement) {
+                                weatherElement.textContent = `${city}: ${temp}°C, ${condition}`;
+                            }
                         })
                         .catch(error => {
                             console.error('Error fetching Dubai weather:', error);
-                            document.getElementById('weather-info').textContent = 'Dubai: 24°C, Clear';
+                            const weatherElement = document.getElementById('weather-info');
+                            if (weatherElement) {
+                                weatherElement.textContent = 'Dubai: 24°C, Clear';
+                            }
                         });
                 }
 

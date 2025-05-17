@@ -64,13 +64,13 @@
 <div id="app" class="app">
   <div class="login login-v2 fw-bold">
     <div class="login-cover">
-      <div class="login-cover-img" style="background-image: url(color_admin_v5.0/admin/template/assets/img/login-bg/login-bg-18.jpg)" data-id="login-cover-image"></div>
+      <div class="login-cover-img" style="background-image: url(loginbackground.jpg)" data-id="login-cover-image"></div>
       <div class="login-cover-bg"></div>
     </div>
     <div class="login-container">
       <div class="login-header">
         <div class="brand">
-          <img src="/assets/logo-white.png" height="50" alt="">
+          <img src="assets/logo-white.png" height="50" alt="">
         </div>
         <div class="icon">
           <i class="fa fa-lock"></i>
@@ -166,22 +166,55 @@ function sendOTP() {
         return;
     }
 
+    // Disable button and show loader
+    $('#sendOtpBtn').prop('disabled', true);
+    HoldOn.open({
+        theme: 'sk-bounce',
+        message: 'Sending OTP...'
+    });
+
     $.ajax({
         type: "POST",
         url: "loginController.php",
         data: { Send_OTP: "send", Email: email },
         success: function(response) {
+            console.log("Response:", response); // Debug
+            // Hide loader
+            HoldOn.close();
+            
             if (response === "success") {
-                notify('Success', "OTP sent to your email!", 'success');
+                notify('Success', "OTP generated successfully!", 'success');
+                
+                // For testing only: Display OTP from backend with timestamp to prevent caching
+                $.ajax({
+                    url: "showOTP.php?t=" + new Date().getTime(),
+                    cache: false,
+                    success: function(data) {
+                        console.log("OTP data:", data); // Debug
+                        if (data && data.trim() !== "") {
+                            notify('Test Mode', "Your OTP is: " + data, 'info');
+                        } else {
+                            notify('Warning', "OTP not found in session", 'warning');
+                        }
+                    }
+                });
+                
                 $('#emailSection').hide();
                 $('#otpSection').show();
                 $('#otp1').focus();
             } else {
                 notify('Error', response, 'error');
+                // Re-enable button on error
+                $('#sendOtpBtn').prop('disabled', false);
             }
         },
-        error: function() {
-            notify('Error', 'Failed to send OTP', 'error');
+        error: function(xhr, status, error) {
+            // Hide loader and re-enable button on error
+            HoldOn.close();
+            $('#sendOtpBtn').prop('disabled', false);
+            
+            console.log("Error:", xhr.responseText); // Debug
+            notify('Error', 'Failed to send OTP: ' + error, 'error');
         }
     });
 }
@@ -196,19 +229,35 @@ function verifyOTP() {
         return;
     }
 
+    // Disable button and show loader
+    $('#loginBtn').prop('disabled', true);
+    HoldOn.open({
+        theme: 'sk-bounce',
+        message: 'Verifying OTP...'
+    });
+
     $.ajax({
         type: "POST",
         url: "loginController.php",
         data: { Verify_OTP: "verify", Email: email, OTP: otp },
         success: function(response) {
+            // Hide loader
+            HoldOn.close();
+            
             if (response === "success") {
                 notify('Success', "Login successful!", 'success');
                 window.location.href = "index.php";
             } else {
                 notify('Error', response, 'error');
+                // Re-enable button on error
+                $('#loginBtn').prop('disabled', false);
             }
         },
         error: function() {
+            // Hide loader and re-enable button on error
+            HoldOn.close();
+            $('#loginBtn').prop('disabled', false);
+            
             notify('Error', 'Failed to verify OTP', 'error');
         }
     });

@@ -440,32 +440,51 @@ if ($action == 'loadAttachments') {
   $imageFileExtens = ['jpg', 'jpeg', 'png', 'gif'];
   $docFileExtens = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar'];
 
-  $html = '';
+  $html = '<div class="row">';
   foreach ($attachments as $attachment) {
     $fileExt = strtolower(pathinfo($attachment['original_name'], PATHINFO_EXTENSION));
     $downloadLink = '/downloadResDocuments.php?id=' . $attachment['ResidenceDocID'];
+    $fileName = isset($attachmentTypes[$attachment['fileType']]) ? $attachmentTypes[$attachment['fileType']] : $attachment['original_name'];
 
-    $previewLink = '';
+    $html .= '<div class="col-md-6 mb-4">';
+    $html .= '<div class="card h-100">';
+    $html .= '<div class="card-header bg-light">';
+    $html .= '<h5 class="mb-0"><span class="fiv-cla fiv-icon-' . $fileExt . '"></span> ' . $fileName . '</h5>';
+    $html .= '</div>';
+    $html .= '<div class="card-body">';
+
+    // Display preview based on file type
     if (in_array($fileExt, $imageFileExtens)) {
-      $previewLink = '/residence/' . $attachment['file_name'];
+      $html .= '<div class="text-center mb-3">';
+      $html .= '<img src="/residence/' . $attachment['file_name'] . '" class="img-fluid" style="max-height: 300px;">';
+      $html .= '</div>';
+    } else if ($fileExt === 'pdf') {
+      $html .= '<div class="embed-responsive embed-responsive-16by9 mb-3">';
+      $html .= '<iframe class="embed-responsive-item" src="/residence/' . $attachment['file_name'] . '" style="width:100%; height:300px;" allowfullscreen></iframe>';
+      $html .= '</div>';
     } else if (in_array($fileExt, $docFileExtens)) {
       $hostName = $_SERVER['HTTP_HOST'];
       $schema = isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME'] : 'http';
       $fileURL = $schema . '://' . $hostName . '/residence/' . $attachment['file_name'];
       $previewLink = 'https://drive.google.com/viewer/viewer?embedded=true&url=' . urlencode($fileURL);
+      
+      $html .= '<div class="embed-responsive embed-responsive-16by9 mb-3">';
+      $html .= '<iframe class="embed-responsive-item" src="' . $previewLink . '" style="width:100%; height:300px;" allowfullscreen></iframe>';
+      $html .= '</div>';
+    } else {
+      $html .= '<div class="text-center mb-3">';
+      $html .= '<i class="fa fa-file-' . $fileExt . ' fa-5x"></i>';
+      $html .= '<p class="mt-2">Preview not available for this file type</p>';
+      $html .= '</div>';
     }
-
-    $html .= '<div class="media d-flex mb-2">';
-    $html .= '<h1 class="me-2"><span class="fiv-cla fiv-icon-' . $fileExt . ' text-lg"></span></h1>';
-    $html .= '<div class="media-body">';
-    $html .= '<h4 class="mb-0">' . (isset($attachmentTypes[$attachment['fileType']]) ? $attachmentTypes[$attachment['fileType']] : $attachment['original_name']) . '</h4>';
-    $html .= '
-            <a target="_blank" class="text-decoration-none" href="' . $previewLink . '"><i class="fa fa-eye"></i> Preview</a> 
-            <a class="text-decoration-none" href="' . $downloadLink . '"><i class="fa fa-download"></i> Download File</a>
-          ';
-    $html .= '</div>';
-    $html .= '</div>';
+    
+    // Download button
+    $html .= '<a href="' . $downloadLink . '" class="btn btn-primary btn-block w-100"><i class="fa fa-download"></i> Download File</a>';
+    $html .= '</div>'; // end card-body
+    $html .= '</div>'; // end card
+    $html .= '</div>'; // end col
   }
+  $html .= '</div>'; // end row
 
   api_response(['status' => 'success', 'html' => $html]);
 }
