@@ -61,15 +61,90 @@ if($select == 0){
             echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
         }
     }else if(isset($_POST['GetCustomersReport'])){
-            $selectQuery = $pdo->prepare("SELECT `customer_id`, `customer_name`, `customer_phone`, `customer_whatsapp`, 
-            `customer_address`, `customer_email`, `cust_password`, CASE WHEN `status` =1 THEN 'Active' ELSE 'Deactive' 
-            END AS status, CASE WHEN affliate_supp_id THEN 1 ELSE 0 END AS affliate_supp_id FROM `customer` ORDER BY 
-            customer_name ASC");
-            $selectQuery->execute();
-            /* Fetch all of the remaining rows in the result set */
-            $rpt = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-            // encoding array to json format
-            echo json_encode($rpt);
+            // Get pagination parameters
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 10;
+            $offset = ($page - 1) * $limit;
+            
+            // Get filter parameters
+            $filterName = isset($_POST['filterName']) ? $_POST['filterName'] : '';
+            $filterPhone = isset($_POST['filterPhone']) ? $_POST['filterPhone'] : '';
+            $filterEmail = isset($_POST['filterEmail']) ? $_POST['filterEmail'] : '';
+            $filterStatus = isset($_POST['filterStatus']) ? $_POST['filterStatus'] : '';
+            $filterSupplier = isset($_POST['filterSupplier']) ? $_POST['filterSupplier'] : '';
+            
+            // Build WHERE clause for filters
+            $whereClause = '';
+            $params = [];
+            
+            if (!empty($filterName)) {
+                $whereClause .= " AND customer_name LIKE :filterName";
+                $params[':filterName'] = "%$filterName%";
+            }
+            
+            if (!empty($filterPhone)) {
+                $whereClause .= " AND customer_phone LIKE :filterPhone";
+                $params[':filterPhone'] = "%$filterPhone%";
+            }
+            
+            if (!empty($filterEmail)) {
+                $whereClause .= " AND customer_email LIKE :filterEmail";
+                $params[':filterEmail'] = "%$filterEmail%";
+            }
+            
+            if (!empty($filterStatus)) {
+                $whereClause .= " AND status = :filterStatus";
+                $params[':filterStatus'] = $filterStatus;
+            }
+            
+            if (!empty($filterSupplier)) {
+                $whereClause .= " AND affliate_supp_id = :filterSupplier";
+                $params[':filterSupplier'] = $filterSupplier;
+            }
+            
+            // Count total records with filters
+            $countQuery = "SELECT COUNT(*) as total FROM `customer` WHERE 1=1 $whereClause";
+            $countStmt = $pdo->prepare($countQuery);
+            
+            // Bind params for count query
+            foreach ($params as $key => $value) {
+                $countStmt->bindValue($key, $value);
+            }
+            
+            $countStmt->execute();
+            $totalRecords = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+            
+            // Get filtered and paginated data
+            $query = "SELECT `customer_id`, `customer_name`, `customer_phone`, `customer_whatsapp`, 
+                     `customer_address`, `customer_email`, `cust_password`, CASE WHEN `status` = 1 THEN 'Active' ELSE 'Inactive' 
+                     END AS status, CASE WHEN affliate_supp_id IS NOT NULL THEN affliate_supp_id ELSE 0 END AS affliate_supp_id 
+                     FROM `customer` 
+                     WHERE 1=1 $whereClause
+                     ORDER BY customer_name ASC
+                     LIMIT :limit OFFSET :offset";
+            
+            $stmt = $pdo->prepare($query);
+            
+            // Bind params for main query
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Return data with pagination info
+            $result = [
+                'data' => $data,
+                'total' => $totalRecords,
+                'page' => $page,
+                'limit' => $limit
+            ];
+            
+            echo json_encode($result);
     }else if(isset($_POST['Delete'])){
         try{
                 if($delete ==1){

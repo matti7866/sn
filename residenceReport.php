@@ -693,7 +693,6 @@ include 'footer.php';
               dailyrptTable += '</div>';
               dailyrptTable += '</div>';
               dailyrptTable += '</div>';
-
               dailyrptTable += '</div>'; // End left column
 
               // Right side - Financial summary
@@ -2053,58 +2052,16 @@ include 'footer.php';
         ResFPaymentID: resFPaymentID.val(),
         SendEmail: true
       },
+      dataType: 'json', // Explicitly tell jQuery to expect JSON
       success: function(response) {
-        try {
-          // Check if response is empty or whitespace-only
-          if (!response || response.trim() === '') {
-            console.log("Empty response received from server");
-            notify('Warning!', 'Payment may have been processed, but no confirmation received.', 'warning');
-            $('#FinePaymentModel').modal('hide');
-            refreshData();
-            return;
-          }
-          
-          // Try to parse as JSON if possible
-          var result;
-          try {
-            result = JSON.parse(response);
-          } catch (parseError) {
-            // Handle non-JSON response
-            console.log("Non-JSON response:", response);
-            
-            // Check if it's a simple success message
-            if (response.includes("Success")) {
-              notify('Success!', 'Fine payment saved successfully', 'success');
-              $('#FinePaymentModel').modal('hide');
-              refreshData();
-            } else {
-              notify('Warning!', 'Unexpected response from server', 'warning');
-              console.error("Response was not JSON:", response);
-            }
-            return;
-          }
-
-          // Handle proper JSON response
-          if (result.status === "Success" || response === "Success") {
-            notify('Success!', result.message || 'Fine payment saved successfully', 'success');
-            $('#FinePaymentModel').modal('hide');
-            refreshData();
-          } else {
-            var errorMsg = (result && result.message) ? result.message : 'Failed to process request';
-            console.error("Error details:", result);
-            notify('Error!', errorMsg, 'error');
-          }
-        } catch (e) {
-          console.error("Error handling response:", e, "Response:", response);
-          
-          // Final fallback for simple string response
-          if (typeof response === 'string' && response.includes("Success")) {
-            notify('Success!', 'Fine payment saved successfully', 'success');
-            $('#FinePaymentModel').modal('hide');
-            refreshData();
-          } else {
-            notify('Error!', 'Failed to process response', 'error');
-          }
+        // Handle JSON response (already parsed by jQuery)
+        if (response.status === "Success") {
+          notify('Success!', response.message || 'Fine payment saved successfully', 'success');
+          $('#FinePaymentModel').modal('hide');
+          refreshData();
+        } else {
+          var errorMsg = (response && response.message) ? response.message : 'Failed to process request';
+          notify('Error!', errorMsg, 'error');
         }
       },
       error: function(xhr, status, error) {

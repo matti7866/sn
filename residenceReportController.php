@@ -490,7 +490,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['ChargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -527,7 +527,7 @@ if (isset($_POST['GetPendingResidence'])) {
     }
 } else if (isset($_POST['ViewFine'])) {
     $selectQuery = $pdo->prepare("SELECT `residenceFineID`, residenceID, DATE_FORMAT(DATE(datetime),'%d-%b-%Y') AS 
-        residenceFineDate , `fineAmount`, currencyName, account_ Name, staff_name, `docName`, `originalName` FROM `residencefine`
+        residenceFineDate , `fineAmount`, currencyName, account_Name, staff_name, `docName`, `originalName` FROM `residencefine`
         INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID INNER JOIN accounts ON accounts.account_ID =
         residencefine.accountID INNER JOIN staff ON staff.staff_id = residencefine.imposedBy WHERE residencefine.residenceID =
         :resID;");
@@ -604,7 +604,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['UpdchargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -697,7 +697,7 @@ if (isset($_POST['GetPendingResidence'])) {
             echo "Something went wrong";
             exit();
         } else {
-            $getAccCur = $pdo->prepare("SELECT account_ Name,curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
             $getAccCur->bindParam(':accountID', $_POST['Fine_account_id']);
             $getAccCur->execute();
             /* Fetch all of the remaining rows in the result set */
@@ -757,15 +757,18 @@ if (isset($_POST['GetPendingResidence'])) {
             }
             $pdo->commit();
             
-            // Check if email should be sent
-            if (isset($_POST['SendEmail']) && $_POST['SendEmail'] === true) {
-                header('Content-Type: application/json');
+            // Always return JSON for consistent response handling
+            header('Content-Type: application/json');
+            if (isset($_POST['SendEmail']) && $_POST['SendEmail'] === 'true') {
                 echo json_encode([
                     'status' => 'Success',
                     'message' => 'Payment saved successfully. Note: Email functionality is not yet available for fine payments.'
                 ]);
             } else {
-                echo "Success";
+                echo json_encode([
+                    'status' => 'Success',
+                    'message' => 'Payment saved successfully.'
+                ]);
             }
         }
     } catch (PDOException $e) {
@@ -809,7 +812,7 @@ if (isset($_POST['GetPendingResidence'])) {
         }
         
         // Check account currency compatibility
-        $getAccCur = $pdo->prepare("SELECT account_ Name, curID FROM `accounts` WHERE account_ID = :accountID");
+        $getAccCur = $pdo->prepare("SELECT account_Name, curID FROM `accounts` WHERE account_ID = :accountID");
         $getAccCur->bindParam(':accountID', $fine_account_id);
         $getAccCur->execute();
         $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
@@ -1313,7 +1316,7 @@ if (isset($_POST['GetPendingResidence'])) {
             customer_payments.pay_id as paymentID,
             DATE_FORMAT(customer_payments.datetime, '%d-%b-%Y') as payment_date,
             customer_payments.payment_amount as amount,
-            accounts.account_ Name as account_name,
+            accounts.account_Name as account_name,
             currency.currencyName as currency_name,
             customer_payments.remarks,
             staff.staff_name as staff_name,
