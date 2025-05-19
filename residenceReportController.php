@@ -59,7 +59,7 @@ if (isset($_POST['GetPendingResidence'])) {
             // Get paginated data - now retrieving all residence records regardless of status
             $query = $pdo->prepare("SELECT res.residenceID AS main_residenceID,res.customer_id, 
                 res.passenger_name, res.completedStep, res.deleted, res.sale_price,
-                res.saleCurID, cus.customer_name, 
+                res.saleCurID, res.current_status AS current_status, cus.customer_name, 
                 IF(res.expiry_date < CURDATE(), 1, 0) as isExpired,
                 cus.customer_email, cus.customer_phone, cus.customer_Address,
                 (SELECT IFNULL(company_name,'') FROM company WHERE company.company_id = res.company) AS company_name,
@@ -113,7 +113,7 @@ if (isset($_POST['GetPendingResidence'])) {
 
             $query = $pdo->prepare("SELECT res.residenceID AS main_residenceID,res.customer_id, 
                 res.passenger_name, res.completedStep, res.deleted, res.sale_price,
-                res.saleCurID, cus.customer_name, 
+                res.saleCurID, res.current_status AS current_status, cus.customer_name, 
                 cus.customer_email, cus.customer_phone, cus.customer_Address,
                 IF(res.expiry_date < CURDATE(), 1, 0) as isExpired,
                 (SELECT IFNULL(company_name,'') FROM company WHERE company.company_id = res.company) AS company_name,
@@ -385,7 +385,7 @@ if (isset($_POST['GetPendingResidence'])) {
         $page = $page - 1;
         $offSet = $page  * 10;
         $selectQuery = $pdo->prepare("SELECT * FROM (SELECT residenceID AS main_residenceID, customer_name,passenger_name , 
-            airports.countryName, country_names,sale_price, currency.currencyName, completedStep,(SELECT IFNULL(company_name,'')
+            airports.countryName, country_names,sale_price, currency.currencyName, current_status, completedStep,(SELECT IFNULL(company_name,'')
             FROM company WHERE company.company_id = residence.company ) AS company_name,(SELECT IFNULL(company_number,'') FROM 
             company WHERE company.company_id = residence.company ) AS company_number,(SELECT 
             IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
@@ -443,7 +443,7 @@ if (isset($_POST['GetPendingResidence'])) {
             customer_payments WHERE customer_payments.residenceFinePayment IN (SELECT residencefine.residenceFineID FROM 
             residencefine WHERE residencefine.residenceID = residence.residenceID AND residence.completedStep = 10 AND 
             (REPLACE(LOWER(passenger_name),' ','') LIKE :search OR REPLACE(LOWER(customer_name),' ','') LIKE :search OR 
-            REPLACE(LOWER(company_name),' ','')  LIKE :search OR REPLACE(LOWER(company_number),' ','') LIKE :search))) =0) AS 
+            REPLACE(LOWER(company_name),' ','')  LIKE :search OR REPLACE(LOWER(company_number),' ','') LIKE :search)))) =0) AS 
             totalRow FROM `residence` INNER JOIN customer ON customer.customer_id = residence.customer_id INNER JOIN airports ON
             airports.airport_id = residence.Nationality INNER JOIN country_name ON country_name.country_id = residence.VisaType 
             INNER JOIN company ON company.company_id = residence.company INNER JOIN currency ON currency.currencyID = 
@@ -490,7 +490,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['ChargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -527,7 +527,7 @@ if (isset($_POST['GetPendingResidence'])) {
     }
 } else if (isset($_POST['ViewFine'])) {
     $selectQuery = $pdo->prepare("SELECT `residenceFineID`, residenceID, DATE_FORMAT(DATE(datetime),'%d-%b-%Y') AS 
-        residenceFineDate , `fineAmount`, currencyName, account_Name, staff_name, `docName`, `originalName` FROM `residencefine`
+        residenceFineDate , `fineAmount`, currencyName, account_ Name, staff_name, `docName`, `originalName` FROM `residencefine`
         INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID INNER JOIN accounts ON accounts.account_ID =
         residencefine.accountID INNER JOIN staff ON staff.staff_id = residencefine.imposedBy WHERE residencefine.residenceID =
         :resID;");
@@ -604,7 +604,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['UpdchargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -697,7 +697,7 @@ if (isset($_POST['GetPendingResidence'])) {
             echo "Something went wrong";
             exit();
         } else {
-            $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur = $pdo->prepare("SELECT account_ Name,curID FROM `accounts` WHERE account_ID = :accountID");
             $getAccCur->bindParam(':accountID', $_POST['Fine_account_id']);
             $getAccCur->execute();
             /* Fetch all of the remaining rows in the result set */
@@ -809,7 +809,7 @@ if (isset($_POST['GetPendingResidence'])) {
         }
         
         // Check account currency compatibility
-        $getAccCur = $pdo->prepare("SELECT account_Name, curID FROM `accounts` WHERE account_ID = :accountID");
+        $getAccCur = $pdo->prepare("SELECT account_ Name, curID FROM `accounts` WHERE account_ID = :accountID");
         $getAccCur->bindParam(':accountID', $fine_account_id);
         $getAccCur->execute();
         $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
@@ -1254,26 +1254,26 @@ if (isset($_POST['GetPendingResidence'])) {
             country_name.country_names AS visaType, residence.sale_price AS debit, 0 AS credit FROM residence INNER JOIN 
             country_name ON residence.VisaType = country_name.country_id WHERE residence.customer_id = :customerID  AND 
             REPLACE(LOWER(residence.passenger_name), ' ','') = :passengerName AND residence.saleCurID = :currencyID AND 
-            residence.islocked = 0 UNION ALL SELECT 'Residence Fine' AS transactionType, residence.passenger_name AS 
+            residence.islocked = 0 AND residence.current_status = 'Active' UNION ALL SELECT 'Residence Fine' AS transactionType, residence.passenger_name AS 
             passenger_name, DATE_FORMAT(DATE(residencefine.datetime),'%d-%b-%Y') AS dt,DATE(residencefine.datetime) AS orderDate,
             country_name.country_names AS visaType, residencefine.fineAmount AS debit, 0 AS credit FROM residencefine INNER JOIN
             residence ON residence.residenceID = residencefine.residenceID INNER JOIN country_name ON country_name.country_id =
             residence.VisaType WHERE residence.customer_id = :customerID AND REPLACE(LOWER(residence.passenger_name), ' ','') = 
-            :passengerName AND residencefine.fineCurrencyID = :currencyID AND residence.islocked = 0 UNION ALL SELECT 
+            :passengerName AND residencefine.fineCurrencyID = :currencyID AND residence.islocked = 0 AND residence.current_status = 'Active' UNION ALL SELECT 
             'Residence Payment' AS transactionType, passenger_name AS passenger_name, 
             DATE_FORMAT(DATE(customer_payments.datetime),'%d-%b-%Y') AS dt,DATE(customer_payments.datetime) AS orderDate,
             country_name.country_names AS VisaType,0 AS debit,customer_payments.payment_amount AS credit FROM customer_payments 
             INNER JOIN residence ON residence.residenceID = customer_payments.PaymentFor INNER JOIN country_name ON 
             country_name.country_id = residence.VisaType WHERE customer_payments.customer_id = :customerID AND 
             REPLACE(LOWER(residence.passenger_name), ' ','') = :passengerName AND customer_payments.currencyID = :currencyID AND
-            residence.islocked = 0 UNION ALL SELECT 'Residence Fine Payment' AS transactionType, passenger_name AS passenger_name,
+            residence.islocked = 0 AND residence.current_status = 'Active' UNION ALL SELECT 'Residence Fine Payment' AS transactionType, passenger_name AS passenger_name,
             DATE_FORMAT(DATE(customer_payments.datetime),'%d-%b-%Y') AS dt,DATE(customer_payments.datetime) AS orderDate,
             country_name.country_names AS VisaType, 0 AS debit, customer_payments.payment_amount AS credit FROM customer_payments
             INNER JOIN residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment INNER JOIN 
             residence ON residence.residenceID = residencefine.residenceID INNER JOIN country_name ON country_name.country_id =
             residence.VisaType WHERE customer_payments.customer_id = :customerID AND 
             REPLACE(LOWER(residence.passenger_name), ' ','') = :passengerName AND customer_payments.currencyID = :currencyID AND
-            residence.islocked = 0 ORDER BY orderDate, passenger_name, transactionType");
+            residence.islocked = 0 AND residence.current_status = 'Active' ORDER BY orderDate, passenger_name, transactionType");
         $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
         $selectQuery->bindParam(':passengerName', $passengerName);
         $selectQuery->bindParam(':currencyID', $_POST['CurID']);
@@ -1282,24 +1282,24 @@ if (isset($_POST['GetPendingResidence'])) {
             DATE_FORMAT(DATE(residence.datetime),'%d-%b-%Y') AS dt,DATE(residence.datetime) AS OrderDate, 
             country_name.country_names AS visaType, residence.sale_price AS debit, 0 AS credit FROM residence INNER JOIN 
             country_name ON residence.VisaType = country_name.country_id WHERE residence.customer_id = :customerID AND 
-            residence.saleCurID = :currencyID AND residence.islocked = 0 UNION ALL SELECT 'Residence Fine' AS transactionType,
+            residence.saleCurID = :currencyID AND residence.islocked = 0 AND residence.current_status = 'Active' UNION ALL SELECT 'Residence Fine' AS transactionType,
             residence.passenger_name AS passenger_name, DATE_FORMAT(DATE(residencefine.datetime),'%d-%b-%Y') AS dt,
             DATE(residencefine.datetime) AS orderDate,country_name.country_names AS visaType, residencefine.fineAmount AS debit,
             0 AS credit FROM residencefine INNER JOIN residence ON residence.residenceID = residencefine.residenceID INNER JOIN
             country_name ON country_name.country_id = residence.VisaType WHERE residence.customer_id = :customerID AND  
-            residencefine.fineCurrencyID = :currencyID AND residence.islocked = 0 UNION ALL SELECT 'Residence Payment' AS 
+            residencefine.fineCurrencyID = :currencyID AND residence.islocked = 0 AND residence.current_status = 'Active' UNION ALL SELECT 'Residence Payment' AS 
             transactionType, passenger_name AS passenger_name, DATE_FORMAT(DATE(customer_payments.datetime),'%d-%b-%Y') AS dt,
             DATE(customer_payments.datetime) AS orderDate, country_name.country_names AS VisaType,0 AS debit,
             customer_payments.payment_amount AS credit FROM customer_payments INNER JOIN residence ON residence.residenceID = 
             customer_payments.PaymentFor INNER JOIN country_name ON country_name.country_id = residence.VisaType WHERE 
             customer_payments.customer_id = :customerID AND customer_payments.currencyID = :currencyID AND residence.islocked = 0
-            UNION ALL SELECT 'Residence Fine Payment' AS transactionType, passenger_name AS passenger_name, 
+            AND residence.current_status = 'Active' UNION ALL SELECT 'Residence Fine Payment' AS transactionType, passenger_name AS passenger_name, 
             DATE_FORMAT(DATE(customer_payments.datetime),'%d-%b-%Y') AS dt,DATE(customer_payments.datetime) AS orderDate,
             country_name.country_names AS VisaType, 0 AS debit, customer_payments.payment_amount AS credit FROM customer_payments
             INNER JOIN residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment INNER JOIN 
             residence ON residence.residenceID = residencefine.residenceID INNER JOIN country_name ON country_name.country_id =
             residence.VisaType WHERE customer_payments.customer_id = :customerID AND customer_payments.currencyID = :currencyID 
-            AND residence.islocked = 0 ORDER BY orderDate, passenger_name, transactionType");
+            AND residence.islocked = 0 AND residence.current_status = 'Active' ORDER BY orderDate, passenger_name, transactionType");
         $selectQuery->bindParam(':customerID', $_POST['CustomerID']);
         $selectQuery->bindParam(':currencyID', $_POST['CurID']);
     }
@@ -1313,7 +1313,7 @@ if (isset($_POST['GetPendingResidence'])) {
             customer_payments.pay_id as paymentID,
             DATE_FORMAT(customer_payments.datetime, '%d-%b-%Y') as payment_date,
             customer_payments.payment_amount as amount,
-            accounts.account_Name as account_name,
+            accounts.account_ Name as account_name,
             currency.currencyName as currency_name,
             customer_payments.remarks,
             staff.staff_name as staff_name,
@@ -1687,6 +1687,20 @@ if (isset($_POST['GetPendingResidence'])) {
             'status' => 'Error',
             'message' => "Failed to process payment: " . $e->getMessage()
         ]);
+    }
+} else if (isset($_POST['ReplaceResidence'])) {
+    try {
+        $id = $_POST['ID'];
+        if ($id == '' || $id == null) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid residence id']);
+            exit;
+        }
+        $stmt = $pdo->prepare("UPDATE residence SET current_status = 'replaced' WHERE residenceID = :id");
+        $stmt->bindParam(':id', $id);
+        $stmt->execute();
+        echo json_encode(['status' => 'success', 'message' => 'Residence status updated to replaced']);
+    } catch (PDOException $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
 function uploadExtraDocs()

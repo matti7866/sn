@@ -651,7 +651,7 @@ include 'footer.php';
               dailyrptTable += '<div class="row mb-3 align-items-center">';
               dailyrptTable += '<div class="col-md-8">';
               dailyrptTable += '<h2 class="mb-2"><i>' + dataArray[i].passenger_name + '</i></h2>';
-              dailyrptTable += '<div class="badge ' + statusClass + ' mb-2">' + statusText + '</div>';
+              dailyrptTable += '<div class="badge ' + statusClass + ' mb-2 me-1">' + statusText + '</div><span class="badge bg-secondary mb-2">' + (dataArray[i].current_status || '') + '</span>';
               dailyrptTable += '</div>';
               dailyrptTable += '<div class="col-md-4 text-end">';
               dailyrptTable += '<div class="d-flex justify-content-end align-items-center">';
@@ -754,6 +754,7 @@ include 'footer.php';
               dailyrptTable += '<ul class="dropdown-menu">';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog(' + dataArray[i].main_residenceID + ')"><i class="fa fa-plus"></i> Add Fine</button></li>';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="viewFine(' + dataArray[i].main_residenceID + ')"><i class="fa fa-eye"></i> View Fine</button></li>';
+              dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="replaceResidence(' + dataArray[i].main_residenceID + ')"><i class="fa fa-exchange"></i> Replace</button></li>';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="deleteResidence(' + dataArray[i].main_residenceID + ')"><i class="fa fa-trash"></i> Delete Residence</button></li>';
               dailyrptTable += '</ul>';
               dailyrptTable += '</div>';
@@ -1164,7 +1165,7 @@ include 'footer.php';
             pendingPaymentTable += '<div class="row mb-3 align-items-center">';
             pendingPaymentTable += '<div class="col-md-8">';
             pendingPaymentTable += '<h2 class="mb-2"><i>' + pendingPaymentResidenceRpt[i].passenger_name + '</i></h2>';
-            pendingPaymentTable += '<div class="badge bg-warning text-dark mb-2">Payment Pending</div>';
+            pendingPaymentTable += '<div class="badge bg-warning text-dark mb-2 me-1">Payment Pending</div><span class="badge bg-secondary mb-2">' + (pendingPaymentResidenceRpt[i].current_status || '') + '</span>';
             pendingPaymentTable += '</div>';
             pendingPaymentTable += '<div class="col-md-4 text-end">';
             pendingPaymentTable += '<div class="d-flex justify-content-end align-items-center">';
@@ -1263,6 +1264,7 @@ include 'footer.php';
             pendingPaymentTable += '<ul class="dropdown-menu">';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-plus"></i> Add Fine</button></li>';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="viewFine(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-eye"></i> View Fine</button></li>';
+            pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="replaceResidence(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-exchange"></i> Replace</button></li>';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="deleteResidence(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-trash"></i> Delete Residence</button></li>';
             pendingPaymentTable += '</ul>';
             pendingPaymentTable += '</div>';
@@ -1339,7 +1341,7 @@ include 'footer.php';
             completeTable += '<div class="row mb-3 align-items-center">';
             completeTable += '<div class="col-md-8">';
             completeTable += '<h2 class="mb-2"><i>' + compeletedResidenceRpt[i].passenger_name + '</i></h2>';
-            completeTable += '<div class="badge bg-success mb-2">Completed</div>';
+            completeTable += '<div class="badge bg-success mb-2 me-1">Completed</div><span class="badge bg-secondary mb-2">' + (compeletedResidenceRpt[i].current_status || '') + '</span>';
             completeTable += '</div>';
             completeTable += '<div class="col-md-4 text-end">';
             completeTable += '<div class="d-flex justify-content-end align-items-center">';
@@ -3106,6 +3108,43 @@ include 'footer.php';
 
     window.open('printLetter.php?id=' + residenceId + '&type=salary_certificate&bank_id=' + bankId, '_blank');
     $('#bankSelectorModal').modal('hide');
+  }
+
+  function replaceResidence(id) {
+    var ReplaceResidence = "ReplaceResidence";
+    $.confirm({
+      title: 'Replace!',
+      content: 'Do you want to replace this residence?',
+      type: 'orange',
+      typeAnimated: true,
+      buttons: {
+        yes: {
+          text: 'Yes',
+          btnClass: 'btn-warning',
+          action: function() {
+            $.ajax({
+              type: "POST",
+              url: "residenceReportController.php",
+              data: {
+                ReplaceResidence: ReplaceResidence,
+                ID: id
+              },
+              success: function(response) {
+                var res;
+                try { res = JSON.parse(response); } catch(e) { res = {status:'error', message:response}; }
+                if (res.status == 'success' || response == 'Success') {
+                  notify('Success!', 'Residence replaced successfully', 'success');
+                  getSearchRpt();
+                } else {
+                  notify('Oops!', res.message ? res.message : 'Something went wrong!', 'error');
+                }
+              },
+            });
+          }
+        },
+        close: function() {}
+      }
+    });
   }
 </script>
 

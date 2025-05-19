@@ -59,7 +59,7 @@ if ($search != '') {
 $stmt = $pdo->prepare("
   SELECT COUNT(*) as count, completedStep
   FROM residence 
-  WHERE DATE(datetime) >= '{$dateAfter}' {$where}
+  WHERE DATE(datetime) >= '{$dateAfter}' {$where} AND current_status = 'Active'
   GROUP BY completedStep
   ");
 $stmt->execute();
@@ -79,7 +79,7 @@ if ($search != '') {
 $stmt = $pdo->prepare("
 SELECT IFNULL(COUNT(*),0) as total 
 FROM residence 
-WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 2 AND offerLetterStatus = 'submitted' {$where}
+WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 2 AND offerLetterStatus = 'submitted' {$where} AND current_status = 'Active'
 ");
 $stmt->execute();
 $offerLetterSubmitted = $stmt->fetch(PDO::FETCH_OBJ)->total;
@@ -89,7 +89,7 @@ $steps['1a']['count'] = $offerLetterSubmitted;
 $stmt = $pdo->prepare("
 SELECT IFNULL(COUNT(*),0) as total 
 FROM residence 
-WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 5 AND eVisaStatus = 'submitted' {$where}
+WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 5 AND eVisaStatus = 'submitted' {$where} AND current_status = 'Active'
 ");
 $stmt->execute();
 $offerLetterSubmitted = $stmt->fetch(PDO::FETCH_OBJ)->total;
@@ -99,7 +99,7 @@ $steps['4a']['count'] = $offerLetterSubmitted;
 $stmt = $pdo->prepare("
 SELECT IFNULL(COUNT(*),0) as total 
 FROM residence 
-WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 2 AND offerLetterStatus = 'accepted' {$where}
+WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 2 AND offerLetterStatus = 'accepted' {$where} AND current_status = 'Active'
 ");
 $stmt->execute();
 $offerLetterSubmitted = $stmt->fetch(PDO::FETCH_OBJ)->total;
@@ -109,7 +109,7 @@ $steps['2']['count'] = $offerLetterSubmitted;
 $stmt = $pdo->prepare("
 SELECT IFNULL(COUNT(*),0) as total 
 FROM residence 
-WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 5 AND eVisaStatus = 'accepted' {$where}
+WHERE DATE(datetime) >= '{$dateAfter}' AND completedStep = 5 AND eVisaStatus = 'accepted' {$where} AND current_status = 'Active'
 ");
 $stmt->execute();
 $offerLetterSubmitted = $stmt->fetch(PDO::FETCH_OBJ)->total;
@@ -146,7 +146,7 @@ $stmt = $pdo->prepare("
   LEFT JOIN airports ON airports.airport_id = residence.Nationality
   LEFT JOIN company ON company.company_id = residence.company
   LEFT JOIN country_name ON country_name.country_id = residence.VisaType
-  WHERE DATE(residence.datetime) >= '2024-09-01' {$where}
+  WHERE DATE(residence.datetime) >= '2024-09-01' {$where} AND residence.current_status = 'Active'
   GROUP BY residence.residenceID
   ORDER BY residence.residenceID ASC
   ");
@@ -193,6 +193,21 @@ $suppliers = $suppliersQuery->fetchAll(\PDO::FETCH_ASSOC);
         <h3>Residence Tasks (Mainland)</h3>
         <div class="ms-auto">
           <button class="btn btn-primary" id="btnAddNewResidence">Add New Residence</button>
+          <?php
+            // Count in-process replacements
+            $replStmt = $pdo->prepare("SELECT COUNT(*) as count 
+                                       FROM residence 
+                                       WHERE current_status = 'replaced' 
+                                       AND (replacement_status IS NULL OR replacement_status = 'in_process')");
+            $replStmt->execute();
+            $replCount = $replStmt->fetch(PDO::FETCH_OBJ)->count;
+          ?>
+          <a href="residenceReplacements.php" class="btn btn-warning ms-2">
+            <?php if ($replCount > 0): ?>
+            <span class="badge bg-danger"><?php echo $replCount; ?></span>
+            <?php endif; ?>
+            Replacements
+          </a>
         </div>
       </div>
     </div>
