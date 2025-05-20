@@ -1,0 +1,7 @@
+
+Fatal error: Uncaught PDOException: SQLSTATE[HY000] [2002] No such file or directory in /Applications/XAMPP/xamppfiles/htdocs/snt/connection.php:4
+Stack trace:
+#0 /Applications/XAMPP/xamppfiles/htdocs/snt/connection.php(4): PDO->__construct('mysql:host=loca...', 'root', Object(SensitiveParameterValue), Array)
+#1 /Applications/XAMPP/xamppfiles/htdocs/snt/fixDates.php(3): include('/Applications/X...')
+#2 {main}
+  thrown in /Applications/XAMPP/xamppfiles/htdocs/snt/connection.php on line 4

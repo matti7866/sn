@@ -600,6 +600,15 @@ if (isset($_POST['Select_Customer'])) {
 
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
+        
+        // Normalize date fields to full format if only year provided
+        if (!empty($_POST['passportExpiryDate']) && preg_match('/^\\d{4}$/', $_POST['passportExpiryDate'])) {
+            $_POST['passportExpiryDate'] = $_POST['passportExpiryDate'] . '-01-01';
+        }
+        if (!empty($_POST['dob']) && preg_match('/^\\d{4}$/', $_POST['dob'])) {
+            $_POST['dob'] = $_POST['dob'] . '-01-01';
+        }
+        
         if ($image == 'Error') {
             $pdo->rollback();
             echo "Record not added becuase of file uploader";

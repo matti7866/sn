@@ -490,7 +490,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['ChargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -527,7 +527,7 @@ if (isset($_POST['GetPendingResidence'])) {
     }
 } else if (isset($_POST['ViewFine'])) {
     $selectQuery = $pdo->prepare("SELECT `residenceFineID`, residenceID, DATE_FORMAT(DATE(datetime),'%d-%b-%Y') AS 
-        residenceFineDate , `fineAmount`, currencyName, account_Name, staff_name, `docName`, `originalName` FROM `residencefine`
+        residenceFineDate , `fineAmount`, currencyName, account_ Name, staff_name, `docName`, `originalName` FROM `residencefine`
         INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID INNER JOIN accounts ON accounts.account_ID =
         residencefine.accountID INNER JOIN staff ON staff.staff_id = residencefine.imposedBy WHERE residencefine.residenceID =
         :resID;");
@@ -604,7 +604,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['UpdchargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -1336,450 +1336,102 @@ if (isset($_POST['GetPendingResidence'])) {
     $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
     echo json_encode($data);
 } else if (isset($_POST['GetBanks'])) {
-    getBanks();
-} else if (isset($_POST['Insert_Payment_Email'])) {
     try {
-        $pdo->beginTransaction();
-
-        $Payment = $_POST['Payment'];
-        $resID = $_POST['ResID'];
-        $Account_ID = $_POST['Account_ID'];
-        $remarks = $_POST['Remarks'];
-
-        // First, get the residence and customer info to include in email
-        $getInfoQuery = "SELECT customer.customer_id, customer.customer_name, customer.customer_email, residence.passenger_name, 
-                        residence.sale_price, currency.currencyName, customer.customer_phone, residence.saleCurID
-                        FROM residence 
-                        INNER JOIN customer ON customer.customer_id = residence.customer_id
-                        INNER JOIN currency ON currency.currencyID = residence.saleCurID
-                        WHERE residence.residenceID = :resID";
-        $getInfoStmt = $pdo->prepare($getInfoQuery);
-        $getInfoStmt->bindParam(':resID', $resID);
-        $getInfoStmt->execute();
-        $customerInfo = $getInfoStmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$customerInfo) {
-            throw new Exception("Customer information not found");
-        }
-
-        // Continue with payment insertion
-        $insertPaymentQuery = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
-                            PaymentFor, remarks) VALUES (:customer_id, :payment, :currencyID, :staff_id, :accountID, :resID, :remarks)";
-        $insertStmt = $pdo->prepare($insertPaymentQuery);
-        $insertStmt->bindParam(':customer_id', $customerInfo['customer_id']);
-        $insertStmt->bindParam(':payment', $Payment);
-        $insertStmt->bindParam(':currencyID', $customerInfo['saleCurID']);
-        $insertStmt->bindParam(':staff_id', $_SESSION['user_id']);
-        $insertStmt->bindParam(':accountID', $Account_ID);
-        $insertStmt->bindParam(':resID', $resID);
-        $insertStmt->bindParam(':remarks', $remarks);
-        $insertStmt->execute();
-
-        // Check if total payment equals sale price, if so update completedStep if needed
-        $paymentQuery = "SELECT IFNULL(SUM(payment_amount),0) AS total FROM `customer_payments` WHERE PaymentFor = :resID";
-        $paymentStmt = $pdo->prepare($paymentQuery);
-        $paymentStmt->bindParam(':resID', $resID);
-        $paymentStmt->execute();
-        $total = $paymentStmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        $residenceQuery = "SELECT * FROM residence WHERE residenceID = :resID";
-        $residenceStmt = $pdo->prepare($residenceQuery);
-        $residenceStmt->bindParam(':resID', $resID);
-        $residenceStmt->execute();
-        $rpt = $residenceStmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        if ($total[0]['total'] >= $rpt[0]['sale_price'] && $rpt[0]['completedStep'] < 10 && $rpt[0]['completedStep'] >= 6) {
-            $update = "UPDATE residence SET completedStep = 10 WHERE residenceID = :resID";
-            $updateStmt = $pdo->prepare($update);
-            $updateStmt->bindParam(':resID', $resID);
-            $updateStmt->execute();
-        }
-
-        if ($total[0]['total'] == 0) {
-            $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
-            $updateLockTranStmt = $pdo->prepare($updateLockTran);
-            $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
-            $updateLockTranStmt->execute();
-        }
-
-        // Send email notification
-        $success = true;
-        $emailMsg = "";
-
-        if (!empty($customerInfo['customer_email'])) {
-            // Use PHPMailer to send email
-            require 'vendor/autoload.php';
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-
-            try {
-                $mail->isSMTP();
-                $mail->Host = 'smtp.gmail.com';
-                $mail->SMTPAuth = true;
-                $mail->Username = 'selabnadirydxb@gmail.com';
-                $mail->Password = 'qyzuznoxbrfmjvxa';
-                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port = 587;
-
-                // Format current date/time for email
-                $paymentDate = date('d M Y, h:i A');
-
-                // Sender and recipient
-                $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
-                $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
-
-                // Email content
-                $mail->isHTML(true);
-                $mail->Subject = 'Payment Confirmation - SN Travels';
-
-                // Build email body with payment details - new beautiful template
-                $emailBody = "
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='utf-8'>
-                        <meta name='viewport' content='width=device-width, initial-scale=1'>
-                        <title>Payment Confirmation</title>
-                        <style>
-                            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-                            
-                            body { 
-                                font-family: 'Poppins', Arial, sans-serif; 
-                                line-height: 1.6; 
-                                color: #444; 
-                                margin: 0;
-                                padding: 0;
-                                background-color: #f9f9f9;
-                            }
-                            
-                            .email-container {
-                                max-width: 600px;
-                                margin: 0 auto;
-                                background-color: #ffffff;
-                                border-radius: 8px;
-                                overflow: hidden;
-                                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                            }
-                            
-                            .email-header {
-                                background: #000000;
-                                color: white;
-                                padding: 30px 20px;
-                                text-align: center;
-                            }
-                            
-                            .email-header h2 {
-                                margin: 0;
-                                font-weight: 600;
-                                font-size: 24px;
-                                letter-spacing: 0.5px;
-                            }
-                            
-                            .logo {
-                                margin-bottom: 15px;
-                                font-weight: 700;
-                                font-size: 28px;
-                                color: white;
-                            }
-                            
-                            .email-content {
-                                padding: 30px;
-                            }
-                            
-                            .greeting {
-                                font-size: 18px;
-                                margin-bottom: 15px;
-                                color: #333;
-                            }
-                            
-                            .message {
-                                margin-bottom: 25px;
-                                color: #555;
-                            }
-                            
-                            .section-title {
-                                font-size: 18px;
-                                font-weight: 600;
-                                margin-bottom: 15px;
-                                color: #ff423e;
-                                border-bottom: 2px solid #ff423e;
-                                padding-bottom: 5px;
-                                display: inline-block;
-                            }
-                            
-                            .details-table {
-                                width: 100%;
-                                border-collapse: collapse;
-                                margin-bottom: 30px;
-                                border-radius: 6px;
-                                overflow: hidden;
-                                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-                            }
-                            
-                            .details-table th {
-                                background-color: #f2f2f2;
-                                padding: 12px 15px;
-                                text-align: left;
-                                font-weight: 600;
-                                color: #333;
-                                border-bottom: 1px solid #ddd;
-                            }
-                            
-                            .details-table td {
-                                padding: 12px 15px;
-                                text-align: left;
-                                border-bottom: 1px solid #eee;
-                            }
-                            
-                            .details-table tr:last-child td {
-                                border-bottom: none;
-                            }
-                            
-                            .highlight {
-                                font-weight: 600;
-                                color: #ff423e;
-                                font-size: 16px;
-                            }
-                            
-                            .contact-info {
-                                background-color: #f9f9f9;
-                                padding: 20px;
-                                border-radius: 6px;
-                                margin-bottom: 25px;
-                            }
-                            
-                            .contact-info p {
-                                margin: 5px 0;
-                            }
-                            
-                            .contact-label {
-                                font-weight: 600;
-                                color: #666;
-                                width: 50px;
-                                display: inline-block;
-                            }
-                            
-                            .thank-you {
-                                margin: 25px 0;
-                                font-weight: 500;
-                            }
-                            
-                            .signature {
-                                margin-top: 15px;
-                                color: #555;
-                            }
-                            
-                            .email-footer {
-                                background-color: #333;
-                                color: white;
-                                text-align: center;
-                                padding: 20px;
-                                font-size: 12px;
-                            }
-                            
-                            .email-footer p {
-                                margin: 5px 0;
-                                color: #ccc;
-                            }
-                            
-                            @media only screen and (max-width: 600px) {
-                                .email-container {
-                                    width: 100% !important;
-                                    border-radius: 0;
-                                }
-                                
-                                .email-content {
-                                    padding: 20px 15px;
-                                }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class='email-container'>
-                            <div class='email-header'>
-                                <div class='logo'>SN TRAVELS</div>
-                                <h2>Payment Confirmation</h2>
-                            </div>
-                            
-                            <div class='email-content'>
-                                <p class='greeting'>Dear {$customerInfo['customer_name']},</p>
-                                
-                                <p class='message'>Thank you for your payment. We are pleased to confirm that we have received your payment successfully.</p>
-                                
-                                <h3 class='section-title'>Payment Details</h3>
-                                
-                                <table class='details-table'>
-                                    <tr>
-                                        <th>Payment Date</th>
-                                        <td>{$paymentDate}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Passenger Name</th>
-                                        <td>{$customerInfo['passenger_name']}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Amount Paid</th>
-                                        <td class='highlight'>{$Payment} {$customerInfo['currencyName']}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Payment Type</th>
-                                        <td>Residence Payment</td>
-                                    </tr>";
-                
-                // Add remarks to email if provided
-                if(!empty($remarks)) {
-                    $emailBody .= "
-                                    <tr>
-                                        <th>Remarks</th>
-                                        <td>{$remarks}</td>
-                                    </tr>";
-                }
-                
-                $emailBody .= "
-                                </table>
-                                
-                                <div class='contact-info'>
-                                    <p>If you have any questions or need further assistance, please contact us:</p>
-                                    <p><span class='contact-label'>Phone:</span> +97143237879</p>
-                                    <p><span class='contact-label'>Email:</span> info@sntrips.com</p>
-                                </div>
-                                
-                                <p class='thank-you'>Thank you for choosing SN Travels.</p>
-                                
-                                <div class='signature'>
-                                    Best regards,<br>
-                                    SN Travels Team
-                                </div>
-                            </div>
-                            
-                            <div class='email-footer'>
-                                <p>This is an automated email. Please do not reply to this message.</p>
-                                <p>&copy; " . date('Y') . " SN Travels & Tourism L.L.C. All rights reserved.</p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>";
-
-                $mail->Body = $emailBody;
-                $mail->AltBody = "Payment confirmation for {$customerInfo['passenger_name']}. Amount: {$Payment} {$customerInfo['currencyName']}. Date: {$paymentDate}. Contact us at +97143237879 or info@sntrips.com";
-
-                $mail->send();
-                $emailMsg = "Email sent successfully to {$customerInfo['customer_email']}";
-            } catch (Exception $e) {
-                $success = false;
-                $emailMsg = "Failed to send email: " . $mail->ErrorInfo;
-            }
-        } else {
-            $success = false;
-            $emailMsg = "Customer email not available";
-        }
-
-        $pdo->commit();
-
-        // Return JSON response
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'Success',
-            'message' => 'Payment saved successfully. ' . ($success ? $emailMsg : 'Note: ' . $emailMsg),
-            'email_sent' => $success
-        ]);
-    } catch (Exception $e) {
-        $pdo->rollback();
-
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'Error',
-            'message' => "Failed to process payment: " . $e->getMessage()
-        ]);
-    }
-} else if (isset($_POST['ReplaceResidence'])) {
-    try {
-        $id = $_POST['ID'];
-        if ($id == '' || $id == null) {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid residence id']);
-            exit;
-        }
-        $stmt = $pdo->prepare("UPDATE residence SET current_status = 'replaced' WHERE residenceID = :id");
-        $stmt->bindParam(':id', $id);
-        $stmt->execute();
-        echo json_encode(['status' => 'success', 'message' => 'Residence status updated to replaced']);
-    } catch (PDOException $e) {
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-}
-function uploadExtraDocs()
-{
-    $new_image_name = '';
-    if ($_FILES['Chargesuploader']['size'] <= 2097152) {
-        $extension = explode(".", $_FILES['Chargesuploader']['name']);
-        $f_name = '';
-        $f_ext = '';
-        if (count($extension) > 2) {
-            for ($i = 0; $i < count($extension); $i++) {
-                if (count($extension) == $extension[$i]) {
-                    $f_name  = $f_name . $extension[$i];
-        } else {
-                    $f_ext = $extension[$i];
-                }
-            }
-    } else {
-            $f_name =  $extension[0];
-            $f_ext = $extension[1];
-        }
-        $ext = array("txt", "pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "ppt");
-        if (in_array(strtolower($f_ext), $ext)) {
-            $new_image_name = $f_name . "." . date("Y/m/d h:i:s") . $f_ext;
-            $new_image_name = md5($new_image_name);
-            $new_image_name = 'residence/' . $new_image_name . '.' . $f_ext;
-            $destination = $new_image_name;
-            move_uploaded_file($_FILES['Chargesuploader']['tmp_name'], $destination);
-    } else {
-            $new_image_name = '';
-        }
-    }
-    return $new_image_name;
-}
-function getTotalResidencePendingP()
-{
-    global $pdo;
-    $selectQuery = $pdo->prepare("SELECT currencyName,IFNULL(SUM(total),0) AS TotalBalance FROM (SELECT currencyName,
-        IFNULL(SUM(residence.sale_price),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE
-        customer_payments.PaymentFor IS NOT NULL AND customer_payments.currencyID = residence.saleCurID) AS total FROM residence
-        INNER JOIN currency ON currency.currencyID = residence.saleCurID GROUP BY residence.saleCurID UNION ALL SELECT 
-        currencyName,IFNULL(SUM(residencefine.fineAmount),0) - (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM 
-        customer_payments WHERE customer_payments.residenceFinePayment IS NOT NULL AND customer_payments.currencyID = 
-        residencefine.fineCurrencyID) AS total FROM residencefine INNER JOIN currency ON currency.currencyID = 
-        residencefine.fineCurrencyID GROUP BY residencefine.fineCurrencyID) AS baseTable GROUP BY currencyName HAVING TotalBalance
-        != 0 ORDER BY currencyName ASC");
-    $selectQuery->execute();
-    /* Fetch all of the remaining rows in the result set */
-    $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
-    // encoding array to json format
-    echo json_encode($data);
-}
-function getBanks()
-{
-    global $pdo;
-    try {
-        // First check if the banks table exists
-        $checkTable = $pdo->prepare("SHOW TABLES LIKE 'banks'");
-        $checkTable->execute();
-        if ($checkTable->rowCount() === 0) {
-            // Return empty array if table doesn't exist
-            echo json_encode([]);
-            return;
-        }
-
-        // If we get here, the table exists, so get the banks
-        $sql = "SELECT id, bank_name FROM banks ORDER BY bank_name ASC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute();
-        $banks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+        $query = $pdo->prepare("SELECT id, bank_name FROM banks ORDER BY bank_name ASC");
+        $query->execute();
+        $banks = $query->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($banks);
     } catch (PDOException $e) {
-        error_log("Error fetching banks: " . $e->getMessage());
         echo json_encode([]);
     }
+} else if (isset($_POST['CancelResidence'])) {
+    try {
+        // Begin transaction
+        $pdo->beginTransaction();
+
+        // Get residence ID and validate it
+        $residenceID = $_POST['ResidenceID'];
+        $charges = $_POST['CancellationCharges'];
+        $remarks = $_POST['Remarks'];
+
+        // Log inputs for debugging
+        error_log("CancelResidence called with: ID=$residenceID, Charges=$charges, Remarks=$remarks");
+
+        // Validate inputs
+        if (empty($residenceID) || !is_numeric($residenceID)) {
+            throw new Exception("Invalid residence ID");
+        }
+
+        if (empty($charges) || !is_numeric($charges) || $charges <= 0) {
+            throw new Exception("Invalid cancellation charges");
+        }
+
+        if (empty($remarks)) {
+            throw new Exception("Remarks cannot be empty");
+        }
+
+        // Get customer ID for the residence
+        $customerQuery = $pdo->prepare("SELECT customer_id FROM residence WHERE residenceID = :residenceID");
+        $customerQuery->bindParam(':residenceID', $residenceID);
+        $customerQuery->execute();
+        $customerData = $customerQuery->fetch(PDO::FETCH_ASSOC);
+
+        if (!$customerData) {
+            throw new Exception("Residence not found");
+        }
+
+        $customerID = $customerData['customer_id'];
+        error_log("Found customer ID: $customerID for residence: $residenceID");
+
+        // Insert into residence_cancellation table
+        $insertQuery = $pdo->prepare("INSERT INTO residence_cancellation (residence, cancellation_charges, remarks, customer_id) 
+                                      VALUES (:residenceID, :charges, :remarks, :customerID)");
+        $insertQuery->bindParam(':residenceID', $residenceID);
+        $insertQuery->bindParam(':charges', $charges);
+        $insertQuery->bindParam(':remarks', $remarks);
+        $insertQuery->bindParam(':customerID', $customerID);
+        $insertResult = $insertQuery->execute();
+        
+        if (!$insertResult) {
+            $errorInfo = $insertQuery->errorInfo();
+            error_log("Error inserting cancellation record: " . json_encode($errorInfo));
+            throw new Exception("Failed to insert cancellation record: " . $errorInfo[2]);
+        }
+        
+        $cancellationId = $pdo->lastInsertId();
+        error_log("Inserted cancellation record with ID: $cancellationId");
+
+        // Update residence status to cancelled
+        $updateQuery = $pdo->prepare("UPDATE residence SET current_status = 'Cancelled' WHERE residenceID = :residenceID");
+        $updateQuery->bindParam(':residenceID', $residenceID);
+        $updateResult = $updateQuery->execute();
+        
+        if (!$updateResult) {
+            $errorInfo = $updateQuery->errorInfo();
+            error_log("Error updating residence status: " . json_encode($errorInfo));
+            throw new Exception("Failed to update residence status: " . $errorInfo[2]);
+        }
+        
+        error_log("Updated residence status to Cancelled for ID: $residenceID");
+
+        // Commit transaction
+        $pdo->commit();
+        error_log("Cancellation completed successfully for residence: $residenceID");
+
+        echo json_encode(['status' => 'Success', 'message' => 'Residence cancelled successfully']);
+    } catch (PDOException $e) {
+        // Roll back if there's an error
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Database error in cancellation: " . $e->getMessage());
+        echo json_encode(['status' => 'Error', 'message' => 'Database error: ' . $e->getMessage()]);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("General error in cancellation: " . $e->getMessage());
+        echo json_encode(['status' => 'Error', 'message' => $e->getMessage()]);
+    }
 }
-// Close connection
-unset($pdo);
+?>

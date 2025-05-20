@@ -692,7 +692,6 @@ include 'footer.php';
               dailyrptTable += '<div class="col-md-6"><strong class="text-white">Company Number:</strong> <span class="text-light">' + dataArray[i].company_number + '</span></div>';
               dailyrptTable += '</div>';
               dailyrptTable += '</div>';
-              dailyrptTable += '</div>';
               dailyrptTable += '</div>'; // End left column
 
               // Right side - Financial summary
@@ -747,6 +746,7 @@ include 'footer.php';
               dailyrptTable += '<a href="printLetter.php?id=' + dataArray[i].main_residenceID + '&type=noc" class="btn btn-primary" type="button"><i class="fa fa-file-text"></i> NOC</a>';
               dailyrptTable += '<button class="btn btn-success" type="button" onclick="openSalaryCertificateDialog(' + dataArray[i].main_residenceID + ')"><i class="fa fa-file-text"></i> Salary Certificate</button>';
               dailyrptTable += dataArray[i].isExpired == 1 ? '<a href="residence.php?type=renew&oldID=' + dataArray[i].main_residenceID + '&stp=0" class="btn btn-success" type="button" onclick=""><i class="fa fa-file-text"></i> Renew Residency</a>' : '';
+              dailyrptTable += dataArray[i].current_status == 'Cancelled' ? '<a href="residence.php?type=renewal&oldID=' + dataArray[i].main_residenceID + '&stp=0" class="btn btn-success" type="button"><i class="fa fa-refresh"></i> Renewal</a>' : '';
               dailyrptTable += '<div class="btn-group">';
               dailyrptTable += '<button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">';
               dailyrptTable += 'More <i class="fa fa-caret-down" aria-hidden="true"></i></button>';
@@ -754,6 +754,7 @@ include 'footer.php';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog(' + dataArray[i].main_residenceID + ')"><i class="fa fa-plus"></i> Add Fine</button></li>';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="viewFine(' + dataArray[i].main_residenceID + ')"><i class="fa fa-eye"></i> View Fine</button></li>';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="replaceResidence(' + dataArray[i].main_residenceID + ')"><i class="fa fa-exchange"></i> Replace</button></li>';
+              dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="cancelResidence(' + dataArray[i].main_residenceID + ')"><i class="fa fa-ban"></i> Cancel</button></li>';
               dailyrptTable += '<li><button class="dropdown-item" type="button" onclick="deleteResidence(' + dataArray[i].main_residenceID + ')"><i class="fa fa-trash"></i> Delete Residence</button></li>';
               dailyrptTable += '</ul>';
               dailyrptTable += '</div>';
@@ -1257,6 +1258,7 @@ include 'footer.php';
             pendingPaymentTable += '<button class="btn btn-danger" type="button" onclick="getPendingPayment(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-cc-paypal"></i> Make Payment</button>';
             pendingPaymentTable += '<button class="btn btn-warning" type="button" onclick="viewFine(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-money"></i> Pay Fine</button>';
             pendingPaymentTable += '<button class="btn btn-info" type="button" onclick="viewPaymentHistory(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-history"></i> Payment History</button>';
+            pendingPaymentTable += pendingPaymentResidenceRpt[i].current_status == 'Cancelled' ? '<a href="residence.php?type=renewal&oldID=' + pendingPaymentResidenceRpt[i].main_residenceID + '&stp=0" class="btn btn-success" type="button"><i class="fa fa-refresh"></i> Renewal</a>' : '';
             pendingPaymentTable += '<div class="btn-group">';
             pendingPaymentTable += '<button type="button" class="btn btn-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">';
             pendingPaymentTable += 'More <i class="fa fa-caret-down" aria-hidden="true"></i></button>';
@@ -1264,6 +1266,7 @@ include 'footer.php';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="openResidenceFineDialog(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-plus"></i> Add Fine</button></li>';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="viewFine(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-eye"></i> View Fine</button></li>';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="replaceResidence(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-exchange"></i> Replace</button></li>';
+            pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="cancelResidence(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-ban"></i> Cancel</button></li>';
             pendingPaymentTable += '<li><button class="dropdown-item" type="button" onclick="deleteResidence(' + pendingPaymentResidenceRpt[i].main_residenceID + ')"><i class="fa fa-trash"></i> Delete Residence</button></li>';
             pendingPaymentTable += '</ul>';
             pendingPaymentTable += '</div>';
@@ -3103,6 +3106,97 @@ include 'footer.php';
       }
     });
   }
+
+  // Add function to open cancellation modal
+  function cancelResidence(id) {
+    $('#cancelResidenceID').val(id);
+    $('#cancellationModal').modal('show');
+  }
+
+  // Function to save cancellation
+  function saveResidenceCancellation() {
+    var residenceID = $('#cancelResidenceID').val();
+    var charges = $('#cancellationCharges').val();
+    var remarks = $('#cancellationRemarks').val();
+    
+    // Validate inputs
+    if (!charges || charges <= 0) {
+      notify('Validation Error!', 'Please enter valid cancellation charges', 'error');
+      return;
+    }
+    
+    if (!remarks || remarks.trim() === '') {
+      notify('Validation Error!', 'Please provide cancellation remarks', 'error');
+      return;
+    }
+    
+    // Disable the submit button to prevent double submissions
+    $('#saveCancellationBtn').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing...');
+    
+    $.ajax({
+      type: "POST",
+      url: "residenceReportController.php",
+      data: {
+        CancelResidence: "CancelResidence",
+        ResidenceID: residenceID,
+        CancellationCharges: charges,
+        Remarks: remarks
+      },
+      dataType: 'text', // Change to text to handle any response format
+      success: function(response) {
+        console.log("Raw response:", response);
+        
+        // Try to parse as JSON
+        var result;
+        try {
+          result = JSON.parse(response);
+          console.log("Parsed JSON response:", result);
+          
+          if (result.status === "Success" || result.status === "success") {
+            notify('Success!', 'Residence cancelled successfully', 'success');
+            $('#cancellationModal').modal('hide');
+            
+            // Reset form fields
+            $('#cancelResidenceID').val('');
+            $('#cancellationCharges').val('');
+            $('#cancellationRemarks').val('');
+            
+            // Refresh the residence data
+            getSearchRpt();
+          } else {
+            notify('Error!', result.message || 'Failed to cancel residence', 'error');
+            console.error("Error details:", result);
+          }
+        } catch (e) {
+          console.error("JSON parsing error:", e);
+          // Fallback for non-JSON responses
+          if (response.includes("Success")) {
+            notify('Success!', 'Residence cancelled successfully', 'success');
+            $('#cancellationModal').modal('hide');
+            
+            // Reset form fields
+            $('#cancelResidenceID').val('');
+            $('#cancellationCharges').val('');
+            $('#cancellationRemarks').val('');
+            
+            // Refresh the residence data
+            getSearchRpt();
+          } else {
+            notify('Error!', 'Failed to cancel residence: ' + response, 'error');
+            console.error("Non-JSON error response:", response);
+          }
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error("AJAX error:", xhr.responseText, "Status:", status, "Error:", error);
+        notify('Error!', 'Failed to communicate with server: ' + error, 'error');
+      },
+      complete: function() {
+        // Re-enable the button regardless of success/failure
+        $('#saveCancellationBtn').prop('disabled', false).html('Save');
+      }
+    });
+  }
 </script>
 
 <!-- Bank Selector Modal for Salary Certificate -->
@@ -3125,6 +3219,33 @@ include 'footer.php';
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-success" onclick="generateSalaryCertificate()">Generate Certificate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancellation Modal -->
+<div class="modal fade" id="cancellationModal" tabindex="-1" role="dialog" aria-labelledby="cancellationModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title" id="cancellationModalLabel">Residence Cancellation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="cancelResidenceID">
+        <div class="form-group mb-3">
+          <label for="cancellationCharges" class="form-label">Cancellation Charges:</label>
+          <input type="number" class="form-control" id="cancellationCharges" placeholder="Enter cancellation charges">
+        </div>
+        <div class="form-group mb-3">
+          <label for="cancellationRemarks" class="form-label">Remarks:</label>
+          <textarea class="form-control" id="cancellationRemarks" rows="3" placeholder="Enter remarks"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-success" id="saveCancellationBtn" onclick="saveResidenceCancellation()">Save</button>
       </div>
     </div>
   </div>

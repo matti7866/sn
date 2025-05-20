@@ -71,6 +71,21 @@ if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
     // echo '</pre>';
 }
 
+// Add support for renewal of cancelled residences
+if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID'])) {
+    $sql = "SELECT * FROM `residence` WHERE `residenceID` = :id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':id', $_GET['oldID']);
+    $stmt->execute();
+    $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+    
+    // Insert record into residence_renewal table to track renewals
+    $insertSql = "INSERT INTO residence_renewal (residence) VALUES (:residence)";
+    $insertStmt = $pdo->prepare($insertSql);
+    $insertStmt->bindParam(':residence', $_GET['oldID']);
+    $insertStmt->execute();
+}
+
 ?>
 <div class="container-fluid">
     <div class="row">
@@ -142,10 +157,11 @@ if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
                                     <div class="col-md-2">
                                         <label for="staticEmail" class="col-form-label text-dark">UID</label>
                                         <input type="text" value="<?php echo isset($res['uid']) ? $res['uid'] : ''; ?>" class="form-control" id="uid" name="uid" placeholder="UID">
+                                        <!-- Set visa type to Residence (17) automatically -->
                                         <input type="hidden" id="visaType" name="visaType" value="17" />
 
                                         <input type="hidden" id="residenceID" name="residenceID" value="<?php echo isset($res['residenceID']) ? $res['residenceID'] : ''; ?>" />
-                                        <input type="hidden" id="resType" name="resType" value="<?php echo isset($res) ? 'renew' : 'new'; ?>" />
+                                        <input type="hidden" id="resType" name="resType" value="<?php echo isset($_GET['type']) && $_GET['type'] == 'renewal' ? 'renewal' : (isset($res) ? 'renew' : 'new'); ?>" />
                                     </div>
                                 </div>
 
@@ -670,7 +686,7 @@ if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
             </div>
             <div class="modal-body">
-                <form id="genralUpdForm">
+                <form id="positionForm">
                     <div id="ticketSection">
                         <div class="form-group row mb-3">
                             <label for="inputPassword" class="col-sm-3 col-form-label">Position Name:</label>
@@ -696,7 +712,7 @@ if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="genralUpdForm">
+                    <form id="companyForm">
                         <div id="ticketSection">
                             <div class="form-group row mb-3">
                                 <label for="inputPassword" class="col-sm-3 col-form-label">Company name:</label>
@@ -1193,14 +1209,15 @@ if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
                     }
                 }
                 var type = $('.stepper-container a')[0].classList[1];
-                if (type != "completed" || type != "active") {
+                if (type != "completed" && type != "active") {
                     if (type == "") {
                         notify('Validation Error!', 'Something went wrong! x2', 'error');
                         return;
                     }
                 }
                 if (type == "active") {
-                    if (GRID != "") {
+                    // Don't validate GRID for renewals or active items
+                    if (GRID != "" && $('#resType').val() != 'renewal' && $('#resType').val() != 'renew') {
                         notify('Validation Error!', 'Something went wrong! x3', 'error');
                         return;
                     }
@@ -1220,11 +1237,12 @@ if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
                     notify('Validation Error!', 'Nationality is required', 'error');
                     return;
                 }
+                // Skip visa type validation as it's a hidden field with fixed value 17 for residence
                 var visaType = $('#visaType').val();
-                if (visaType == "-1") {
-                    notify('Validation Error!', 'Visa type is required', 'error');
-                    return;
+                if (visaType == "") {
+                    $('#visaType').val(17); // Set default value if not already set
                 }
+                
                 var sale_amount = $('#sale_amount').val();
                 if (sale_amount == "") {
                     notify('Validation Error!', 'Sale amount is required', 'error');
