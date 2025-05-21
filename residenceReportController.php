@@ -264,7 +264,7 @@ if (isset($_POST['GetPendingResidence'])) {
     $data = $selectQuery->fetchAll(\PDO::FETCH_ASSOC);
     // encoding array to json format
     echo json_encode($data);
-} else if (isset($_POST['Insert_Payment'])) {
+} else if (isset($_POST['INSERT_PAYMENT_EMAIL'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
@@ -490,7 +490,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['ChargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -527,7 +527,7 @@ if (isset($_POST['GetPendingResidence'])) {
     }
 } else if (isset($_POST['ViewFine'])) {
     $selectQuery = $pdo->prepare("SELECT `residenceFineID`, residenceID, DATE_FORMAT(DATE(datetime),'%d-%b-%Y') AS 
-        residenceFineDate , `fineAmount`, currencyName, account_ Name, staff_name, `docName`, `originalName` FROM `residencefine`
+        residenceFineDate , `fineAmount`, currencyName, account_Name, staff_name, `docName`, `originalName` FROM `residencefine`
         INNER JOIN currency ON currency.currencyID = residencefine.fineCurrencyID INNER JOIN accounts ON accounts.account_ID =
         residencefine.accountID INNER JOIN staff ON staff.staff_id = residencefine.imposedBy WHERE residencefine.residenceID =
         :resID;");
@@ -604,7 +604,7 @@ if (isset($_POST['GetPendingResidence'])) {
     try {
         // First of all, let's begin a transaction
         $pdo->beginTransaction();
-        $decisionFlag = $pdo->prepare("SELECT curID, account_ Name FROM `accounts` WHERE account_ID = :AccID");
+        $decisionFlag = $pdo->prepare("SELECT curID, account_Name FROM `accounts` WHERE account_ID = :AccID");
         $decisionFlag->bindParam(':AccID', $_POST['UpdchargeAccount']);
         $decisionFlag->execute();
         /* Fetch all of the remaining rows in the result set */
@@ -1432,6 +1432,649 @@ if (isset($_POST['GetPendingResidence'])) {
         }
         error_log("General error in cancellation: " . $e->getMessage());
         echo json_encode(['status' => 'Error', 'message' => $e->getMessage()]);
+    }
+} else if (isset($_POST['INSERT_PAYMENT_EMAIL'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT customer_id, saleCurID FROM residence WHERE residenceID = :residenceID");
+        $decisionFlag->bindParam(':residenceID', $_POST['ResID']);
+        $decisionFlag->execute();
+        /* Fetch all of the remaining rows in the result set */
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if (($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['saleCurID'] == '' || $rpt[0]['saleCurID'] == null)) {
+            $pdo->rollback();
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'Error',
+                'message' => 'Invalid residence data. Please try again.'
+            ]);
+            exit();
+        } else {
+            $getAccCur = $pdo->prepare("SELECT account_Name, curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur->bindParam(':accountID', $_POST['Account_ID']);
+            $getAccCur->execute();
+            /* Fetch all of the remaining rows in the result set */
+            $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
+            
+            // Get customer email for later use
+            $getCustomerInfo = $pdo->prepare("SELECT c.customer_email, c.customer_name, r.passenger_name, 
+                                                    cr.currencyName, r.sale_price 
+                                               FROM customer c 
+                                               JOIN residence r ON c.customer_id = r.customer_id 
+                                               JOIN currency cr ON cr.currencyID = r.saleCurID 
+                                              WHERE r.residenceID = :resID");
+            $getCustomerInfo->bindParam(':resID', $_POST['ResID']);
+            $getCustomerInfo->execute();
+            $customerInfo = $getCustomerInfo->fetch(PDO::FETCH_ASSOC);
+            
+            if ($accCur[0]['account_Name'] == "Cash") {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,`accountID`,
+                        `PaymentFor`, `remarks`) VALUES (:customer_id, :payment_amount, :currencyID, :staff_id, :accountID,
+                        :PaymentFor, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Payment']);
+                $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Account_ID']);
+                $stmt->bindParam(':PaymentFor', $_POST['ResID']);
+                $stmt->bindParam(':remarks', $_POST['Remarks']);
+            } else if ($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] == $rpt[0]['saleCurID']) {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,`accountID`,
+                        `PaymentFor`, `remarks`) VALUES (:customer_id, :payment_amount, :currencyID, :staff_id, :accountID,
+                        :PaymentFor, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Payment']);
+                $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Account_ID']);
+                $stmt->bindParam(':PaymentFor', $_POST['ResID']);
+                $stmt->bindParam(':remarks', $_POST['Remarks']);
+            } else {
+                $pdo->rollback();
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'Error',
+                    'message' => 'Currencies do not match! Please select an account with matching currency.'
+                ]);
+                exit();
+            }
+
+            // Execute the prepared statement to save payment
+            $stmt->execute();
+            
+            // Check if payment has completed the residence total amount
+            $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
+                    FROM residencefine WHERE residencefine.residenceID = :resID)) - ((SELECT 
+                    IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
+                    :resID) + (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments INNER JOIN 
+                    residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment WHERE 
+                    residencefine.residenceID = :resID)) AS total FROM residence WHERE residence.residenceID = :resID";
+            $checkTotalStmt = $pdo->prepare($checkTotal);
+            $checkTotalStmt->bindParam(':resID', $_POST['ResID']);
+            $checkTotalStmt->execute();
+            $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            if ($total[0]['total'] == 0) {
+                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+                $updateLockTranStmt = $pdo->prepare($updateLockTran);
+                $updateLockTranStmt->bindParam(':resID', $_POST['ResID']);
+                $updateLockTranStmt->execute();
+            }
+            
+            // Send email notification if customer has email
+            $emailSuccess = false;
+            $emailMsg = 'Payment saved successfully.';
+            
+            if (!empty($customerInfo['customer_email'])) {
+                try {
+                    require 'vendor/autoload.php';
+                    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                    
+                    $mail->isSMTP();
+                    $mail->Host = 'smtp.gmail.com';
+                    $mail->SMTPAuth = true;
+                    $mail->Username = 'selabnadirydxb@gmail.com';
+                    $mail->Password = 'qyzuznoxbrfmjvxa';
+                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port = 587;
+                    
+                    // Format current date/time for email
+                    $paymentDate = date('d M Y, h:i A');
+                    
+                    // Sender and recipient 
+                    $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
+                    $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
+                    
+                    // Email content
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Residence Payment Confirmation - SN Travels';
+                    
+                    // Build email body with payment details
+                    $emailBody = "
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset='utf-8'>
+                            <meta name='viewport' content='width=device-width, initial-scale=1'>
+                            <title>Payment Confirmation</title>
+                            <style>
+                                body { 
+                                    font-family: 'Arial', sans-serif; 
+                                    line-height: 1.6; 
+                                    color: #444; 
+                                    margin: 0;
+                                    padding: 0;
+                                    background-color: #f9f9f9;
+                                }
+                                
+                                .email-container {
+                                    max-width: 600px;
+                                    margin: 0 auto;
+                                    background-color: #ffffff;
+                                    border-radius: 8px;
+                                    overflow: hidden;
+                                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                                }
+                                
+                                .email-header {
+                                    background: #000000;
+                                    color: white;
+                                    padding: 30px 20px;
+                                    text-align: center;
+                                }
+                                
+                                .email-header h2 {
+                                    margin: 0;
+                                    font-weight: 600;
+                                    font-size: 24px;
+                                    letter-spacing: 0.5px;
+                                }
+                                
+                                .email-content {
+                                    padding: 30px;
+                                }
+                                
+                                .details-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin-bottom: 30px;
+                                    border-radius: 6px;
+                                    overflow: hidden;
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                                }
+                                
+                                .details-table th {
+                                    background-color: #f2f2f2;
+                                    padding: 12px 15px;
+                                    text-align: left;
+                                    font-weight: 600;
+                                    color: #333;
+                                    border-bottom: 1px solid #ddd;
+                                }
+                                
+                                .details-table td {
+                                    padding: 12px 15px;
+                                    text-align: left;
+                                    border-bottom: 1px solid #eee;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class='email-container'>
+                                <div class='email-header'>
+                                    <div class='logo'>SN TRAVELS</div>
+                                    <h2>Payment Confirmation</h2>
+                                </div>
+                                
+                                <div class='email-content'>
+                                    <p>Dear {$customerInfo['customer_name']},</p>
+                                    
+                                    <p>Thank you for your payment. We are pleased to confirm that we have received your payment successfully.</p>
+                                    
+                                    <h3>Payment Details</h3>
+                                    
+                                    <table class='details-table'>
+                                        <tr>
+                                            <th>Payment Date</th>
+                                            <td>{$paymentDate}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Passenger Name</th>
+                                            <td>{$customerInfo['passenger_name']}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Amount Paid</th>
+                                            <td>{$_POST['Payment']} {$customerInfo['currencyName']}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Remarks</th>
+                                            <td>{$_POST['Remarks']}</td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <p>If you have any questions or need further assistance, please contact us at +97143237879 or info@sntrips.com</p>
+                                    
+                                    <p>Thank you for choosing SN Travels.</p>
+                                    
+                                    <div>
+                                        Best regards,<br>
+                                        SN Travels Team
+                                    </div>
+                                </div>
+                            </div>
+                        </body>
+                        </html>";
+
+                    $mail->Body = $emailBody;
+                    $mail->AltBody = "Payment confirmation for {$customerInfo['passenger_name']}. Amount: {$_POST['Payment']} {$customerInfo['currencyName']}. Date: {$paymentDate}. Contact us at +97143237879 or info@sntrips.com";
+
+                    $mail->send();
+                    $emailSuccess = true;
+                    $emailMsg = 'Payment saved and email sent successfully.';
+                } catch (Exception $e) {
+                    $emailMsg = 'Payment saved successfully. Note: Failed to send email: ' . $mail->ErrorInfo;
+                }
+            } else {
+                $emailMsg = 'Payment saved successfully. Note: Customer email not available.';
+            }
+            
+            // Commit database transaction
+            $pdo->commit();
+            
+            // Return JSON response
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'Success',
+                'message' => $emailMsg,
+                'email_sent' => $emailSuccess
+            ]);
+        }
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'Error',
+            'message' => "Failed to process payment: " . $e->getMessage()
+        ]);
+    }
+} else if (isset($_POST['INSERT_FINE_PAYMENT'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT residence.residenceID,residence.customer_id,residencefine.fineCurrencyID FROM residence INNER JOIN
+                residencefine ON residence.residenceID = residencefine.residenceID WHERE residencefine.residenceFineID = 
+                :residenceFineID");
+        $decisionFlag->bindParam(':residenceFineID', $_POST['ResFPaymentID']);
+        $decisionFlag->execute();
+        /* Fetch all of the remaining rows in the result set */
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if (($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['fineCurrencyID'] == '' || $rpt[0]['fineCurrencyID'] == null)) {
+
+            $pdo->rollback();
+            echo "Something went wrong";
+            exit();
+        } else {
+            $getAccCur = $pdo->prepare("SELECT account_Name,curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur->bindParam(':accountID', $_POST['Fine_account_id']);
+            $getAccCur->execute();
+            /* Fetch all of the remaining rows in the result set */
+            $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
+            if ($accCur[0]['account_Name'] == "Cash") {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+                        residenceFinePayment, remarks) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,
+                        :residenceFinePayment, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Fine_payAmount']);
+                $stmt->bindParam(':currencyID', $rpt[0]['fineCurrencyID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Fine_account_id']);
+                $stmt->bindParam(':residenceFinePayment', $_POST['ResFPaymentID']);
+                $stmt->bindParam(':remarks', $_POST['Fine_remarks']);
+            } else if ($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] ==  $rpt[0]['fineCurrencyID']) {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,accountID,
+                        residenceFinePayment, remarks) VALUES (:customer_id, :payment_amount,:currencyID,:staff_id,:accountID,
+                        :residenceFinePayment, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Fine_payAmount']);
+                $stmt->bindParam(':currencyID', $rpt[0]['fineCurrencyID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Fine_account_id']);
+                $stmt->bindParam(':residenceFinePayment', $_POST['ResFPaymentID']);
+                $stmt->bindParam(':remarks', $_POST['Fine_remarks']);
+            } else {
+                $pdo->rollback();
+                echo "Currencies does not match! Please select account that its currency match with the sale price currency";
+                exit();
+            }
+
+            // execute the prepared statement
+            $stmt->execute();
+            // create prepared statement
+            $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
+                    FROM residencefine WHERE residencefine.residenceID = :resID)) - ((SELECT 
+                    IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
+                    :resID) + (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments INNER JOIN 
+                    residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment WHERE 
+                    residencefine.residenceID = :resID)) AS total FROM residence WHERE residence.residenceID = :resID";
+            $checkTotalStmt = $pdo->prepare($checkTotal);
+            $checkTotalStmt->bindParam(':resID', $rpt[0]['residenceID']);
+            $checkTotalStmt->execute();
+            $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
+            if ($total[0]['total'] == 0) {
+                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+                $updateLockTranStmt = $pdo->prepare($updateLockTran);
+                $updateLockTranStmt->bindParam(':resID', $rpt[0]['residenceID']);
+                $updateLockTranStmt->execute();
+            }
+            $pdo->commit();
+            
+            // Always return JSON for consistent response handling
+            header('Content-Type: application/json');
+            if (isset($_POST['SendEmail']) && $_POST['SendEmail'] === 'true') {
+                echo json_encode([
+                    'status' => 'Success',
+                    'message' => 'Payment saved successfully. Note: Email functionality is not yet available for fine payments.'
+                ]);
+            } else {
+                echo json_encode([
+                    'status' => 'Success',
+                    'message' => 'Payment saved successfully.'
+                ]);
+            }
+        }
+    } catch (PDOException $e) {
+        $pdo->rollback();
+        echo "ERROR: Could not able to execute $sql. " . $e->getMessage();
+    }
+} else if (isset($_POST['Insert_Payment'])) {
+    try {
+        // First of all, let's begin a transaction
+        $pdo->beginTransaction();
+        $decisionFlag = $pdo->prepare("SELECT customer_id, saleCurID FROM residence WHERE residenceID = :residenceID");
+        $decisionFlag->bindParam(':residenceID', $_POST['ResID']);
+        $decisionFlag->execute();
+        /* Fetch all of the remaining rows in the result set */
+        $rpt = $decisionFlag->fetchAll(\PDO::FETCH_ASSOC);
+        if (($rpt[0]['customer_id'] == '' || $rpt[0]['customer_id'] == null) && ($rpt[0]['saleCurID'] == '' || $rpt[0]['saleCurID'] == null)) {
+            $pdo->rollback();
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'Error',
+                'message' => 'Invalid residence data. Please try again.'
+            ]);
+            exit();
+        } else {
+            $getAccCur = $pdo->prepare("SELECT account_Name, curID FROM `accounts` WHERE account_ID = :accountID");
+            $getAccCur->bindParam(':accountID', $_POST['Account_ID']);
+            $getAccCur->execute();
+            /* Fetch all of the remaining rows in the result set */
+            $accCur = $getAccCur->fetchAll(\PDO::FETCH_ASSOC);
+            
+            // Get customer email for later use
+            $getCustomerInfo = $pdo->prepare("SELECT c.customer_email, c.customer_name, r.passenger_name, 
+                                                    cr.currencyName, r.sale_price 
+                                               FROM customer c 
+                                               JOIN residence r ON c.customer_id = r.customer_id 
+                                               JOIN currency cr ON cr.currencyID = r.saleCurID 
+                                              WHERE r.residenceID = :resID");
+            $getCustomerInfo->bindParam(':resID', $_POST['ResID']);
+            $getCustomerInfo->execute();
+            $customerInfo = $getCustomerInfo->fetch(PDO::FETCH_ASSOC);
+            
+            if ($accCur[0]['account_Name'] == "Cash") {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,`accountID`,
+                        `PaymentFor`, `remarks`) VALUES (:customer_id, :payment_amount, :currencyID, :staff_id, :accountID,
+                        :PaymentFor, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Payment']);
+                $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Account_ID']);
+                $stmt->bindParam(':PaymentFor', $_POST['ResID']);
+                $stmt->bindParam(':remarks', $_POST['Remarks']);
+            } else if ($accCur[0]['account_Name'] != "Cash" && $accCur[0]['curID'] == $rpt[0]['saleCurID']) {
+                // create prepared statement
+                $sql = "INSERT INTO `customer_payments`(`customer_id`,`payment_amount`,`currencyID`, `staff_id`,`accountID`,
+                        `PaymentFor`, `remarks`) VALUES (:customer_id, :payment_amount, :currencyID, :staff_id, :accountID,
+                        :PaymentFor, :remarks)";
+                $stmt = $pdo->prepare($sql);
+                // bind parameters to statement
+                $stmt->bindParam(':customer_id', $rpt[0]['customer_id']);
+                $stmt->bindParam(':payment_amount', $_POST['Payment']);
+                $stmt->bindParam(':currencyID', $rpt[0]['saleCurID']);
+                $stmt->bindParam(':staff_id', $_SESSION['user_id']);
+                $stmt->bindParam(':accountID', $_POST['Account_ID']);
+                $stmt->bindParam(':PaymentFor', $_POST['ResID']);
+                $stmt->bindParam(':remarks', $_POST['Remarks']);
+            } else {
+                $pdo->rollback();
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'Error',
+                    'message' => 'Currencies do not match! Please select an account with matching currency.'
+                ]);
+                exit();
+            }
+
+            // Execute the prepared statement to save payment
+            $stmt->execute();
+            
+            // Check if payment has completed the residence total amount
+            $checkTotal = "SELECT (IFNULL(SUM(residence.sale_price),0) + (SELECT IFNULL(SUM(residencefine.fineAmount),0) 
+                    FROM residencefine WHERE residencefine.residenceID = :resID)) - ((SELECT 
+                    IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments WHERE customer_payments.PaymentFor = 
+                    :resID) + (SELECT IFNULL(SUM(customer_payments.payment_amount),0) FROM customer_payments INNER JOIN 
+                    residencefine ON residencefine.residenceFineID = customer_payments.residenceFinePayment WHERE 
+                    residencefine.residenceID = :resID)) AS total FROM residence WHERE residence.residenceID = :resID";
+            $checkTotalStmt = $pdo->prepare($checkTotal);
+            $checkTotalStmt->bindParam(':resID', $_POST['ResID']);
+            $checkTotalStmt->execute();
+            $total = $checkTotalStmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            if ($total[0]['total'] == 0) {
+                $updateLockTran = "UPDATE residence SET residence.islocked = 1 WHERE residence.residenceID = :resID";
+                $updateLockTranStmt = $pdo->prepare($updateLockTran);
+                $updateLockTranStmt->bindParam(':resID', $_POST['ResID']);
+                $updateLockTranStmt->execute();
+            }
+            
+            // Send email notification if customer has email
+            $emailSuccess = false;
+            $emailMsg = 'Payment saved successfully.';
+            
+            if (!empty($customerInfo['customer_email'])) {
+                try {
+                    require 'vendor/autoload.php';
+                    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+                    
+                    $mail->isSMTP();
+                    $mail->Host = 'smtp.gmail.com';
+                    $mail->SMTPAuth = true;
+                    $mail->Username = 'selabnadirydxb@gmail.com';
+                    $mail->Password = 'qyzuznoxbrfmjvxa';
+                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port = 587;
+                    
+                    // Format current date/time for email
+                    $paymentDate = date('d M Y, h:i A');
+                    
+                    // Sender and recipient 
+                    $mail->setFrom('selabnadirydxb@gmail.com', 'SN Travels');
+                    $mail->addAddress($customerInfo['customer_email'], $customerInfo['customer_name']);
+                    
+                    // Email content
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Residence Payment Confirmation - SN Travels';
+                    
+                    // Build email body with payment details
+                    $emailBody = "
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset='utf-8'>
+                            <meta name='viewport' content='width=device-width, initial-scale=1'>
+                            <title>Payment Confirmation</title>
+                            <style>
+                                body { 
+                                    font-family: 'Arial', sans-serif; 
+                                    line-height: 1.6; 
+                                    color: #444; 
+                                    margin: 0;
+                                    padding: 0;
+                                    background-color: #f9f9f9;
+                                }
+                                
+                                .email-container {
+                                    max-width: 600px;
+                                    margin: 0 auto;
+                                    background-color: #ffffff;
+                                    border-radius: 8px;
+                                    overflow: hidden;
+                                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                                }
+                                
+                                .email-header {
+                                    background: #000000;
+                                    color: white;
+                                    padding: 30px 20px;
+                                    text-align: center;
+                                }
+                                
+                                .email-header h2 {
+                                    margin: 0;
+                                    font-weight: 600;
+                                    font-size: 24px;
+                                    letter-spacing: 0.5px;
+                                }
+                                
+                                .email-content {
+                                    padding: 30px;
+                                }
+                                
+                                .details-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin-bottom: 30px;
+                                    border-radius: 6px;
+                                    overflow: hidden;
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                                }
+                                
+                                .details-table th {
+                                    background-color: #f2f2f2;
+                                    padding: 12px 15px;
+                                    text-align: left;
+                                    font-weight: 600;
+                                    color: #333;
+                                    border-bottom: 1px solid #ddd;
+                                }
+                                
+                                .details-table td {
+                                    padding: 12px 15px;
+                                    text-align: left;
+                                    border-bottom: 1px solid #eee;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class='email-container'>
+                                <div class='email-header'>
+                                    <div class='logo'>SN TRAVELS</div>
+                                    <h2>Payment Confirmation</h2>
+                                </div>
+                                
+                                <div class='email-content'>
+                                    <p>Dear {$customerInfo['customer_name']},</p>
+                                    
+                                    <p>Thank you for your payment. We are pleased to confirm that we have received your payment successfully.</p>
+                                    
+                                    <h3>Payment Details</h3>
+                                    
+                                    <table class='details-table'>
+                                        <tr>
+                                            <th>Payment Date</th>
+                                            <td>{$paymentDate}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Passenger Name</th>
+                                            <td>{$customerInfo['passenger_name']}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Amount Paid</th>
+                                            <td>{$_POST['Payment']} {$customerInfo['currencyName']}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Remarks</th>
+                                            <td>{$_POST['Remarks']}</td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <p>If you have any questions or need further assistance, please contact us at +97143237879 or info@sntrips.com</p>
+                                    
+                                    <p>Thank you for choosing SN Travels.</p>
+                                    
+                                    <div>
+                                        Best regards,<br>
+                                        SN Travels Team
+                                    </div>
+                                </div>
+                            </div>
+                        </body>
+                        </html>";
+
+                    $mail->Body = $emailBody;
+                    $mail->AltBody = "Payment confirmation for {$customerInfo['passenger_name']}. Amount: {$_POST['Payment']} {$customerInfo['currencyName']}. Date: {$paymentDate}. Contact us at +97143237879 or info@sntrips.com";
+
+                    $mail->send();
+                    $emailSuccess = true;
+                    $emailMsg = 'Payment saved and email sent successfully.';
+                } catch (Exception $e) {
+                    $emailMsg = 'Payment saved successfully. Note: Failed to send email: ' . $mail->ErrorInfo;
+                }
+            } else {
+                $emailMsg = 'Payment saved successfully. Note: Customer email not available.';
+            }
+            
+            // Commit database transaction
+            $pdo->commit();
+            
+            // Return JSON response
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'Success',
+                'message' => $emailMsg,
+                'email_sent' => $emailSuccess
+            ]);
+        }
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'Error',
+            'message' => "Failed to process payment: " . $e->getMessage()
+        ]);
     }
 }
 ?>

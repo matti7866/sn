@@ -961,20 +961,21 @@ include 'footer.php';
   }
 
   function makePayAndEmail() {
-    var insert_payment = "INSERT_Payment_Email";
+    // Use the exact name matching what's used in the controller
+    var insert_payment = "INSERT_PAYMENT_EMAIL";
     var payment = $('#pay');
     if (payment.val() == "") {
-      notify('Validation Error!', 'payment is required', 'error');
+      notify('Validation Error!', 'Payment amount is required', 'error');
       return;
     }
     var remarks = $('#remarks');
     var account_id = $('#account_id');
     if (account_id.val() == "-1") {
-      notify('Validation Error!', 'account is required', 'error');
+      notify('Validation Error!', 'Account is required', 'error');
       return;
     }
     var resID = $('#resID');
-    if (resID.val() == "-1") {
+    if (resID.val() == "-1" || resID.val() == "") {
       notify('Validation Error!', 'Something went wrong', 'error');
       return;
     }
@@ -985,11 +986,19 @@ include 'footer.php';
     saveEmailBtn.html('<i class="fa fa-spinner fa-spin"></i> Processing...');
     saveEmailBtn.prop('disabled', true);
 
+    console.log("Making payment with email notification:", {
+      payment: payment.val(),
+      accountID: account_id.val(),
+      resID: resID.val(),
+      remarks: remarks.val()
+    });
+
     $.ajax({
       type: "POST",
       url: "residenceReportController.php",
       data: {
-        Insert_Payment_Email: insert_payment,
+        // Match case with controller exactly
+        INSERT_PAYMENT_EMAIL: insert_payment,
         Payment: payment.val(),
         Remarks: remarks.val(),
         Account_ID: account_id.val(),
@@ -997,6 +1006,7 @@ include 'footer.php';
         SendEmail: true
       },
       success: function(response) {
+        console.log("Payment response received:", response);
         try {
           // Check if response is already a JSON object
           var result = typeof response === 'object' ? response : JSON.parse(response);
@@ -1516,35 +1526,83 @@ include 'footer.php';
       notify('Validation Error!', 'Fine Amount should not be empty', 'error');
       return;
     }
-    var chargeAccount = $('#chargeAccount').select2('data');
-    if (chargeAccount[0].id <= 1 || chargeAccount[0].id == "" || chargeAccount[0].id == "undefined") {
-      notify('Validation Error!', 'Please select acount', 'error');
-      return;
+    // Fix account selection check - try both methods
+    var chargeAccount;
+    try {
+      chargeAccount = $('#chargeAccount').select2('data');
+      if (!chargeAccount || !chargeAccount[0] || chargeAccount[0].id <= 1 || chargeAccount[0].id == "" || chargeAccount[0].id == "undefined") {
+        // Try direct value method
+        chargeAccount = $('#chargeAccount').val();
+        if (chargeAccount == "-1" || chargeAccount == "") {
+          notify('Validation Error!', 'Please select an account', 'error');
+          return;
+        }
+      } else {
+        chargeAccount = chargeAccount[0].id;
+      }
+    } catch (e) {
+      // If select2 data method fails, use direct value
+      chargeAccount = $('#chargeAccount').val();
+      if (chargeAccount == "-1" || chargeAccount == "") {
+        notify('Validation Error!', 'Please select an account', 'error');
+        return;
+      }
     }
+    
     var fine_currency_type = $('#fine_currency_type');
+    
+    // Add loading indicator
+    var saveBtn = $('button[onclick="saveResidenceFine()"]');
+    var originalBtnText = saveBtn.html();
+    saveBtn.html('<i class="fa fa-spinner fa-spin"></i> Processing...');
+    saveBtn.prop('disabled', true);
+    
     $.ajax({
       type: "POST",
       url: "residenceReportController.php",
       data: {
         SaveResidenceFine: saveResidenceFine,
         Fine_Amount: fine_amount.val(),
-        ChargeAccount: chargeAccount[0].id,
+        ChargeAccount: chargeAccount,
         Fine_currency_type: fine_currency_type.val(),
         RID: rid
       },
       success: function(response) {
-        if (response == "Success") {
-          notify('Success!', 'Record added successfully', 'success');
-          $('#rID').val('');
-          $('#fineModal').modal('hide');
-          $('#fine_amount').val('');
-          getSearchRpt();
-          showTotalFineView();
-        } else {
-          notify('Error!', 'Something went wrong!', 'error');
+        try {
+          if (response == "Success" || (typeof response === 'object' && response.status === "Success")) {
+            notify('Success!', 'Fine added successfully', 'success');
+            $('#rID').val('');
+            $('#fineModal').modal('hide');
+            $('#fine_amount').val('');
+            getSearchRpt();
+            showTotalFineView();
+          } else {
+            notify('Error!', 'Failed to add fine: ' + response, 'error');
+            console.error("Server response:", response);
+          }
+        } catch (e) {
+          console.error("Error processing response:", e);
+          if (response && response.includes("Success")) {
+            notify('Success!', 'Fine added successfully', 'success');
+            $('#rID').val('');
+            $('#fineModal').modal('hide');
+            $('#fine_amount').val('');
+            getSearchRpt();
+            showTotalFineView();
+          } else {
+            notify('Error!', 'Failed to process response', 'error');
+          }
         }
-
       },
+      error: function(xhr, status, error) {
+        notify('Error!', 'Server error: ' + error, 'error');
+        console.error("AJAX error:", xhr.responseText);
+      },
+      complete: function() {
+        // Restore button state
+        saveBtn.html(originalBtnText);
+        saveBtn.prop('disabled', false);
+      }
     });
   }
 
