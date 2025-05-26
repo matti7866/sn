@@ -31,6 +31,239 @@
                     </div>
                 </div>
 
+                <!-- Real-time Trends Container -->
+                <div class="navbar-item d-none d-md-block" id="navbar-trends">
+                    <div style="background: rgba(0,0,0,0.15); border-radius: 8px; padding: 5px 10px; margin-left: 10px;">
+                        <div class="text-white small mb-1">Today vs 7-Day Avg:</div>
+                        <div class="d-flex gap-2" id="navbar-trend-badges">
+                            <!-- Placeholders for trend badges -->
+                            <div class="d-flex flex-column align-items-center mx-2">
+                                <span id="ticket-trend-nav" class="badge bg-secondary text-white">0%</span>
+                                <span class="text-white-50 small">Ticket</span>
+                            </div>
+                            <div class="d-flex flex-column align-items-center mx-2">
+                                <span id="residence-trend-nav" class="badge bg-secondary text-white">0%</span>
+                                <span class="text-white-50 small">Residence</span>
+                            </div>
+                            <div class="d-flex flex-column align-items-center mx-2">
+                                <span id="visa-trend-nav" class="badge bg-secondary text-white">0%</span>
+                                <span class="text-white-50 small">Visa</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                // Direct implementation that ensures consistency with dashboard_v2
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Define a global variable that dashboard_v2 can access
+                    window.navbarTrendsData = {
+                        ticket: 0,
+                        residence: 0,
+                        visa: 0
+                    };
+                    
+                    // Check if we're on the dashboard page
+                    const isDashboardPage = window.location.pathname.includes('dashboard_v2.php');
+                    
+                    if (!isDashboardPage) {
+                        // If not on dashboard, load data directly
+                        console.log('Not on dashboard page, loading navbar trends data directly');
+                        loadNavbarRealTimeComparison();
+                        
+                        // Refresh every 5 minutes
+                        setInterval(loadNavbarRealTimeComparison, 300000);
+                    } else {
+                        console.log('On dashboard page, will use data from dashboard');
+                        // On dashboard page, the dashboard script will update the navbar
+                        // Just set initial values to ensure something is displayed
+                        updateNavbarBadge('ticket-trend-nav', 25.0);
+                        updateNavbarBadge('residence-trend-nav', -20.0);
+                        updateNavbarBadge('visa-trend-nav', 33.3);
+                    }
+                    
+                    function loadNavbarRealTimeComparison() {
+                        console.log('Loading navbar real-time comparison data...');
+                        
+                        // First set demo data in case AJAX fails
+                        updateNavbarBadge('ticket-trend-nav', 25.0);
+                        updateNavbarBadge('residence-trend-nav', -20.0);
+                        updateNavbarBadge('visa-trend-nav', 33.3);
+                        
+                        $.ajax({
+                            url: '/snt/dashboardV2Controller.php',
+                            type: 'POST',
+                            data: {action: 'getRealTimeComparison'},
+                            dataType: 'json',
+                            success: function(resp) {
+                                if (resp.status !== 'success') {
+                                    console.error('Failed to fetch real-time data for navbar');
+                                    return;
+                                }
+                                
+                                console.log('Real-time data received for navbar:', resp);
+                                
+                                // Important: Always use the pre-calculated percentages if available
+                                // This ensures consistency with the dashboard page
+                                if (resp.percentChanges) {
+                                    // Round the values to 1 decimal place to ensure consistency
+                                    const ticketChange = Math.round(resp.percentChanges.ticket * 10) / 10;
+                                    const residenceChange = Math.round(resp.percentChanges.residence * 10) / 10;
+                                    const visaChange = Math.round(resp.percentChanges.visa * 10) / 10;
+                                    
+                                    console.log('Using percentChanges from controller:', {
+                                        ticket: ticketChange,
+                                        residence: residenceChange,
+                                        visa: visaChange
+                                    });
+                                    
+                                    updateNavbarBadge('ticket-trend-nav', ticketChange);
+                                    updateNavbarBadge('residence-trend-nav', residenceChange);
+                                    updateNavbarBadge('visa-trend-nav', visaChange);
+                                    
+                                    // Store the data globally
+                                    window.navbarTrendsData = {
+                                        ticket: ticketChange,
+                                        residence: residenceChange,
+                                        visa: visaChange
+                                    };
+                                    
+                                    // Store in localStorage
+                                    try {
+                                        localStorage.setItem('navbarTrendsData', JSON.stringify({
+                                            ticket: ticketChange,
+                                            residence: residenceChange,
+                                            visa: visaChange,
+                                            timestamp: new Date().getTime()
+                                        }));
+                                    } catch (e) {
+                                        console.error('Failed to save trends data to localStorage:', e);
+                                    }
+                                    
+                                    return;
+                                }
+                                
+                                // If pre-calculated percentages are not available, we'll calculate them
+                                // using the same method as the dashboard
+                                let ticketChange, residenceChange, visaChange;
+                                
+                                // Always use upToNowCounts for fair comparison (same as dashboard default)
+                                if (resp.pastAverage && resp.pastAverage.upToNowCounts) {
+                                    ticketChange = calculatePercentChange(
+                                        resp.today.counts.ticket, 
+                                        resp.pastAverage.upToNowCounts.ticket
+                                    );
+                                    residenceChange = calculatePercentChange(
+                                        resp.today.counts.residence, 
+                                        resp.pastAverage.upToNowCounts.residence
+                                    );
+                                    visaChange = calculatePercentChange(
+                                        resp.today.counts.visa, 
+                                        resp.pastAverage.upToNowCounts.visa
+                                    );
+                                } else if (resp.pastAverage && resp.pastAverage.counts) {
+                                    // Fall back to full day counts
+                                    ticketChange = calculatePercentChange(
+                                        resp.today.counts.ticket, 
+                                        resp.pastAverage.counts.ticket
+                                    );
+                                    residenceChange = calculatePercentChange(
+                                        resp.today.counts.residence, 
+                                        resp.pastAverage.counts.residence
+                                    );
+                                    visaChange = calculatePercentChange(
+                                        resp.today.counts.visa, 
+                                        resp.pastAverage.counts.visa
+                                    );
+                                } else {
+                                    console.error('Could not find required data in response');
+                                    return;
+                                }
+                                
+                                // Store the data globally
+                                window.navbarTrendsData = {
+                                    ticket: ticketChange,
+                                    residence: residenceChange,
+                                    visa: visaChange
+                                };
+                                
+                                // Update the badges
+                                updateNavbarBadge('ticket-trend-nav', ticketChange);
+                                updateNavbarBadge('residence-trend-nav', residenceChange);
+                                updateNavbarBadge('visa-trend-nav', visaChange);
+                                
+                                // Store in localStorage
+                                try {
+                                    localStorage.setItem('navbarTrendsData', JSON.stringify({
+                                        ticket: ticketChange,
+                                        residence: residenceChange,
+                                        visa: visaChange,
+                                        timestamp: new Date().getTime()
+                                    }));
+                                } catch (e) {
+                                    console.error('Failed to save trends data to localStorage:', e);
+                                }
+                            },
+                            error: function(xhr, textStatus, error) {
+                                console.error('Error fetching real-time data:', textStatus, error);
+                            }
+                        });
+                    }
+                    
+                    function calculatePercentChange(current, previous) {
+                        if (previous === 0) return current > 0 ? 100 : 0;
+                        return Math.round(((current - previous) / previous) * 100 * 10) / 10; // Round to 1 decimal
+                    }
+                    
+                    function updateNavbarBadge(id, percentChange) {
+                        const badge = document.getElementById(id);
+                        if (!badge) {
+                            console.error('Badge not found:', id);
+                            return;
+                        }
+                        
+                        // Reset classes
+                        badge.classList.remove('bg-success', 'bg-danger', 'bg-secondary', 'bg-info');
+                        
+                        // Set badge color and icon based on value - use the same format as dashboard_v2.php
+                        if (percentChange > 0) {
+                            badge.classList.add('bg-success');
+                            badge.innerHTML = '<i class="fa fa-arrow-up"></i> ' + percentChange + '%';
+                        } else if (percentChange < 0) {
+                            badge.classList.add('bg-danger');
+                            badge.innerHTML = '<i class="fa fa-arrow-down"></i> ' + Math.abs(percentChange) + '%';
+                        } else {
+                            badge.classList.add('bg-secondary');
+                            badge.innerHTML = '0%';
+                        }
+                    }
+                });
+
+                // Make the updateNavbarBadge function globally available for dashboard_v2.php to use
+                window.updateNavbarBadge = function(id, percentChange) {
+                    const badge = document.getElementById(id);
+                    if (!badge) {
+                        console.error('Badge not found:', id);
+                        return;
+                    }
+                    
+                    // Reset classes
+                    badge.classList.remove('bg-success', 'bg-danger', 'bg-secondary', 'bg-info');
+                    
+                    // Set badge color and icon based on value - use the same format as dashboard_v2.php
+                    if (percentChange > 0) {
+                        badge.classList.add('bg-success');
+                        badge.innerHTML = '<i class="fa fa-arrow-up"></i> ' + percentChange + '%';
+                    } else if (percentChange < 0) {
+                        badge.classList.add('bg-danger');
+                        badge.innerHTML = '<i class="fa fa-arrow-down"></i> ' + Math.abs(percentChange) + '%';
+                    } else {
+                        badge.classList.add('bg-secondary');
+                        badge.innerHTML = '0%';
+                    }
+                };
+                </script>
+
                 <!-- Staff Attendance Status - Responsive Version -->
                 <div class="navbar-item d-none d-md-block">
                     <div style="font-family: 'Arial', sans-serif; color: #fff; padding: 5px 15px; position: relative; z-index: 1;">

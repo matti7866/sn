@@ -331,6 +331,7 @@ if ($action == 'setOfferLetter') {
         offerLetterCostCur = :offerLetterCostCur,
         offerLetterSupplier = :offerLetterSupplier,
         offerLetterAccount = :offerLetterAccount,
+        offerLetterDate = NOW(),
         stepTwoUploder = :stepTwoUploder,
         mb_number = :mb_number,
         offerLetterStatus = 'submitted',
@@ -405,6 +406,7 @@ if ($action  == 'setInsurance') {
         insuranceCur = :insuranceCur,
         insuranceSupplier = :insuranceSupplier,
         insuranceAccount = :insuranceAccount,
+        insuranceDate = NOW(),
         stepThreeUploader = :stepThreeUploader,
         completedStep = 3
     WHERE residenceID = :id
@@ -478,6 +480,7 @@ if ($action == 'setLabourCard') {
         laborCardCur=:laborCardCur,
         laborCardSupplier=:laborCardSupplier,
         laborCardAccount=:laborCardAccount,
+        laborCardDate=NOW(),
         stepfourUploader=:stepfourUploader,
         completedStep= 4
         WHERE residenceID = :id
@@ -543,6 +546,7 @@ if ($action == 'setEVisa') {
         eVisaSupplier=:eVisaSupplier,
         eVisaStatus = 'submitted',
         eVisaAccount=:eVisaAccount,
+        eVisaDate=NOW(),
         stepfiveUploader=:stepfiveUploader,
         completedStep = 5
     WHERE residenceID = :id
@@ -608,6 +612,7 @@ if ($action == 'setChangeStatus') {
         changeStatusCur=:changeStatusCur,
         changeStatusSupplier=:changeStatusSupplier,
         changeStatusAccount=:changeStatusAccount,
+        changeStatusDate=NOW(),
         stepsixUploader=:stepsixUploader,
         completedStep = 6
     WHERE residenceID = :id
@@ -673,6 +678,7 @@ if ($action == 'setMedical') {
         medicalTCur=:medicalTCur,
         medicalSupplier=:medicalSupplier,
         medicalAccount=:medicalAccount,
+        medicalDate=NOW(),
         stepsevenUpploader=:stepsevenUpploader,
         completedStep = 7
     WHERE residenceID = :id
@@ -737,6 +743,7 @@ if ($action == 'setEmiratesID') {
         emiratesIDCur=:emiratesIDCur,
         emiratesIDSupplier=:emiratesIDSupplier,
         emiratesIDAccount=:emiratesIDAccount,
+        emiratesIDDate=NOW(),
         stepEightUploader=:stepEightUploader,
         completedStep = 8
     WHERE residenceID = :id
@@ -761,6 +768,7 @@ if ($action == 'setVisaStamping') {
     $visaStampingChargeOn = filterInput('visaStampingChargeOn');
     $visaStampingChargeAccount = filterInput('visaStampingChargeAccount');
     $visaStampingChargeSupplier = filterInput('visaStampingChargeSupplier');
+    $visaStampingLabourCardNumber = filterInput('visaStampingLabourCardNumber');
 
     if ($id == "") {
         api_response(['status' => 'error', 'message' => 'Invalid input']);
@@ -807,6 +815,7 @@ if ($action == 'setVisaStamping') {
         LabourCardNumber=:LabourCardNumber,
         visaStampingSupplier=:visaStampingSupplier,
         visaStampingAccount=:visaStampingAccount,
+        visaStampingDate=NOW(),
         stepNineUpploader=:stepNineUpploader,
         completedStep = 9
     WHERE residenceID = :id

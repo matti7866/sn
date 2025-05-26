@@ -81,4 +81,7 @@ $staffname = $row5->fetch_assoc();
     <script src="https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+    
+    <!-- Navbar Trends Display -->
+    <!-- <script src="assets/js/navbar-trends.js"></script> -->
 </head>

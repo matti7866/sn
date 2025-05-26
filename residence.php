@@ -48,42 +48,86 @@ if ($insert == 0) {
     echo "<script>window.location.href='pageNotFound.php'</script>";
 }
 
-$stmt = $pdo->prepare("
-    SELECT residence.*, company.username, company.password
-    FROM `residence` 
-    LEFT JOIN `company` ON company.company_id = residence.company
-    WHERE `residenceID` = :id
-    ");
-$stmt->bindParam(':id', $_GET['id']);
-$stmt->execute();
-$residence = $stmt->fetch(\PDO::FETCH_ASSOC);
+// Debug variable to track database loading
+$residence = null;
+
+// Only try to load residence data if ID parameter is provided
+if (isset($_GET['id']) && !empty($_GET['id'])) {
+    try {
+        // Log the ID we're trying to load for debugging
+        error_log("Attempting to load residence with ID: " . $_GET['id']);
+        
+        $stmt = $pdo->prepare("
+            SELECT residence.*, company.username, company.password,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.offerLetterChargedEntity) as offerLetterChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.laborCardChargedEntity) as laborCardChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.eVisaChargedEntity) as eVisaChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.changeStatusChargedEntity) as changeStatusChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.medicalTChargedEntity) as medicalTChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.emiratesIDChargedEntity) as emiratesIDChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.visaStampingChargedEntity) as visaStampingChargedEntityName,
+            (SELECT account_Name FROM accounts WHERE account_ID = residence.insuranceChargedEntity) as insuranceChargedEntityName
+            FROM `residence` 
+            LEFT JOIN `company` ON company.company_id = residence.company
+            WHERE `residenceID` = :id
+            ");
+        $stmt->bindParam(':id', $_GET['id']);
+        $stmt->execute();
+        $residence = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        if ($residence) {
+            error_log("Successfully loaded residence data for ID: " . $_GET['id']);
+        } else {
+            error_log("No residence found with ID: " . $_GET['id']);
+        }
+    } catch (PDOException $e) {
+        error_log("Database error loading residence: " . $e->getMessage());
+    }
+}
 
 $res = null;
 
 if (isset($_GET['type']) && $_GET['type'] == 'renew' && isset($_GET['oldID'])) {
-    $sql = "SELECT * FROM `residence` WHERE `residenceID` = :id";
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(':id', $_GET['oldID']);
-    $stmt->execute();
-    $res = $stmt->fetch(\PDO::FETCH_ASSOC);
-    // echo '<pre>';
-    // print_r($res);
-    // echo '</pre>';
+    try {
+        $sql = "SELECT * FROM `residence` WHERE `residenceID` = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':id', $_GET['oldID']);
+        $stmt->execute();
+        $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        if ($res) {
+            error_log("Successfully loaded renewal data for oldID: " . $_GET['oldID']);
+        } else {
+            error_log("No residence found for renewal with oldID: " . $_GET['oldID']);
+        }
+    } catch (PDOException $e) {
+        error_log("Database error loading renewal: " . $e->getMessage());
+    }
 }
 
 // Add support for renewal of cancelled residences
 if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID'])) {
-    $sql = "SELECT * FROM `residence` WHERE `residenceID` = :id";
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(':id', $_GET['oldID']);
-    $stmt->execute();
-    $res = $stmt->fetch(\PDO::FETCH_ASSOC);
-    
-    // Insert record into residence_renewal table to track renewals
-    $insertSql = "INSERT INTO residence_renewal (residence) VALUES (:residence)";
-    $insertStmt = $pdo->prepare($insertSql);
-    $insertStmt->bindParam(':residence', $_GET['oldID']);
-    $insertStmt->execute();
+    try {
+        $sql = "SELECT * FROM `residence` WHERE `residenceID` = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':id', $_GET['oldID']);
+        $stmt->execute();
+        $res = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        if ($res) {
+            // Insert record into residence_renewal table to track renewals
+            $insertSql = "INSERT INTO residence_renewal (residence) VALUES (:residence)";
+            $insertStmt = $pdo->prepare($insertSql);
+            $insertStmt->bindParam(':residence', $_GET['oldID']);
+            $insertStmt->execute();
+            
+            error_log("Created renewal record for residence with ID: " . $_GET['oldID']);
+        } else {
+            error_log("Failed to create renewal - no residence found with oldID: " . $_GET['oldID']);
+        }
+    } catch (PDOException $e) {
+        error_log("Database error processing renewal: " . $e->getMessage());
+    }
 }
 
 ?>
@@ -866,19 +910,97 @@ if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID']))
                 });
 
                 var url = window.location.href;
-                if (hasQueryParams(url) == true) {
-                    var urlFirstParam = location.search.split('&')[0];
-                    var id = urlFirstParam.split('=')[1];
-                    $('#GRID').val(id);
-                    var stp = location.search.split('&stp=')[1];
-                    $('#ComStpID').val(stp);
-                    setCurrentStep(stp);
+                console.log("Current URL:", url); // Debug log
 
-                    //some additional steps
-                    getCustomer(null, <?php echo isset($res['customer_id']) ? $res['customer_id'] : ''; ?>);
-                    getNationalities(null, <?php echo isset($res['Nationality']) ? $res['Nationality'] : ''; ?>);
-                    //getVisaTypes('all', null);
-                    getCurrencies('saleCur', null);
+                if (hasQueryParams(url) == true) {
+                    try {
+                        // Parse the URL parameters more carefully
+                        var params = new URLSearchParams(window.location.search);
+                        var id = params.get('id');
+                        var stp = params.get('stp');
+                        
+                        console.log("Parsed parameters - ID:", id, "Step:", stp); // Debug log
+                        
+                        if (!id) {
+                            // Fallback to the old parsing method
+                            var urlFirstParam = location.search.split('&')[0];
+                            id = urlFirstParam.split('=')[1];
+                            console.log("Fallback ID parsing:", id); // Debug log
+                        }
+                        
+                        if (!stp) {
+                            // Fallback or default
+                            stp = location.search.split('&stp=')[1] || '1';
+                            console.log("Fallback step parsing:", stp); // Debug log
+                        }
+                        
+                        $('#GRID').val(id);
+                        $('#ComStpID').val(stp);
+                        setCurrentStep(stp);
+
+                        // Load residence data for existing record
+                        <?php if (isset($residence) && $residence): ?>
+                        console.log("Pre-loaded residence data exists, populating form fields");
+                        
+                        // Set customer dropdown
+                        getCustomer(null, <?php echo isset($residence['customer_id']) ? $residence['customer_id'] : 'null'; ?>);
+                        
+                        // Set nationality dropdown
+                        getNationalities(null, <?php echo isset($residence['Nationality']) ? $residence['Nationality'] : 'null'; ?>);
+                        
+                        // Set basic information
+                        $('#passengerName').val('<?php echo isset($residence['passenger_name']) ? addslashes($residence['passenger_name']) : ''; ?>');
+                        $('#passportNumber').val('<?php echo isset($residence['passportNumber']) ? addslashes($residence['passportNumber']) : ''; ?>');
+                        $('#passportExpiryDate').val('<?php echo isset($residence['passportExpiryDate']) ? $residence['passportExpiryDate'] : ''; ?>');
+                        $('#insideOutside').val('<?php echo isset($residence['InsideOutside']) ? $residence['InsideOutside'] : ''; ?>');
+                        $('#uid').val('<?php echo isset($residence['uid']) ? addslashes($residence['uid']) : ''; ?>');
+                        $('#salary_amount').val('<?php echo isset($residence['salary_amount']) ? $residence['salary_amount'] : ''; ?>');
+                        $('#sale_amount').val('<?php echo isset($residence['sale_price']) ? $residence['sale_price'] : ''; ?>');
+                        $('#dob').val('<?php echo isset($residence['dob']) ? $residence['dob'] : ''; ?>');
+                        
+                        // Set gender
+                        var gender = '<?php echo isset($residence['gender']) ? $residence['gender'] : ''; ?>';
+                        if (gender) {
+                            $('#gender').val(gender);
+                        }
+                        
+                        // Set sales currency
+                        getCurrencies('updsaleCur', <?php echo isset($residence['saleCurID']) ? $residence['saleCurID'] : 'null'; ?>);
+                        
+                        // Show file icons if files exist
+                        <?php if (isset($residence['ResidenceDocID']) && $residence['ResidenceDocID'] != 0): ?>
+                        $('#basicDataFileIcon').removeClass('d-none');
+                        <?php endif; ?>
+                        
+                        <?php if (isset($residence['ResidenceDocIDPhoto']) && $residence['ResidenceDocIDPhoto'] != 0): ?>
+                        $('#basicDataFilePhotoIcon').removeClass('d-none');
+                        <?php endif; ?>
+                        
+                        <?php if (isset($residence['ResidenceDocIDIDFront']) && $residence['ResidenceDocIDIDFront'] != 0): ?>
+                        $('#basicDataFileIDFrontIcon').removeClass('d-none');
+                        <?php endif; ?>
+                        
+                        <?php if (isset($residence['ResidenceDocIDIDBack']) && $residence['ResidenceDocIDIDBack'] != 0): ?>
+                        $('#basicDataFileIDBackIcon').removeClass('d-none');
+                        <?php endif; ?>
+                        <?php else: ?>
+                        // No pre-loaded residence data, loading data via AJAX
+                        console.log("No pre-loaded residence data, will load via AJAX");
+                        getCustomer(null, null);
+                        getNationalities(null, null);
+                        <?php endif; ?>
+                        
+                        getCurrencies('saleCur', null);
+                        
+                    } catch (e) {
+                        console.error("Error parsing URL parameters:", e); // Debug error log
+                        // Set defaults
+                        $('.stepper-container a')[0].classList.add('active');
+                        $('#step1').removeClass('d-none');
+                        getCustomer('all', null);
+                        getNationalities('all', null);
+                        getCurrencies('saleCur', null);
+                    }
                 } else {
                     $('.stepper-container a')[0].classList.add('active');
                     $('#step1').removeClass('d-none');
@@ -1460,9 +1582,13 @@ if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID']))
                 var GRID = $('#GRID').val();
                 $('#offerLetterFile').val('');
                 if (GRID == "") {
-                    notify('Validation Error!', 'Something went wrong! 1', 'error');
+                    notify('Validation Error!', 'Residence ID is missing. Please go back to the report page and try again.', 'error');
+                    console.error("Missing residence ID when trying to load offer letter data");
                     return;
                 }
+                
+                console.log("Getting offer letter data for residence ID:", GRID); // Debug log
+                
                 var getSalaryAndCostAmounts = "getSalaryAndCostAmounts";
                 $.ajax({
                     type: "POST",
@@ -1472,42 +1598,99 @@ if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID']))
                         ID: GRID
                     },
                     success: function(response) {
-                        var rpt = JSON.parse(response);
-                        $('#salary_amount').val(rpt[0].salary_amount);
-                        $('#offerLetterCost').val(rpt[0].offerLetterCost);
-                        $("#mb_number").val(rpt[0].mb_number);
-                        if (rpt[0].ResidenceDocID != 0) {
-                            $('#offerLetterFilesIcon').removeClass('d-none');
+                        console.log("Offer letter data received"); // Debug log
+                        try {
+                            var rpt = JSON.parse(response);
+                            if (rpt && rpt.length > 0) {
+                                console.log("Successfully parsed offer letter data");
+                                $('#salary_amount').val(rpt[0].salary_amount);
+                                $('#offerLetterCost').val(rpt[0].offerLetterCost);
+                                $("#mb_number").val(rpt[0].mb_number);
+                                if (rpt[0].ResidenceDocID != 0) {
+                                    $('#offerLetterFilesIcon').removeClass('d-none');
+                                }
+                                
+                                // Set the position if available
+                                if (rpt[0].positionID) {
+                                    setTimeout(function() {
+                                        $('#position').val(rpt[0].positionID).trigger('change');
+                                    }, 500);
+                                }
+                                
+                                // Set the company if available
+                                if (rpt[0].company) {
+                                    setTimeout(function() {
+                                        $('#company').val(rpt[0].company).trigger('change');
+                                    }, 700);
+                                }
+                            } else {
+                                console.error("Empty or invalid offer letter data received");
+                                notify('Warning', 'Could not load offer letter data. Some fields may be empty.', 'warning');
+                            }
+                        } catch (e) {
+                            console.error("Error parsing offer letter data:", e);
+                            console.error("Raw response:", response);
+                            notify('Error', 'Failed to parse offer letter data. Please try refreshing the page.', 'error');
                         }
                     },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX error loading offer letter data:", error);
+                        console.error("Status:", status);
+                        console.error("Response:", xhr.responseText);
+                        notify('Error!', 'Failed to load offer letter data. Please try again.', 'error');
+                    }
                 });
                 getCurrencies('salaryCur', GRID);
                 //getPositions(GRID);
                 getCompanies(GRID);
                 getCurrencies('offerLCostCur', GRID);
                 getOffLChargedEnitity('load', 'offerLetter');
-
             }
             // get step data
             function getStepsData(curStep) {
-                if (curStep == 2) {
-                    getOfferLetter();
-                } else if (curStep == 3) {
-                    getInsurance();
-                } else if (curStep == 4) {
-                    getLabourCard();
-                } else if (curStep == 5) {
-                    getEVisaTyping();
-                } else if (curStep == 6) {
-                    getChangeStatus();
-                } else if (curStep == 7) {
-                    getMedicalTyping();
-                } else if (curStep == 8) {
-                    getEmiratesIDTyping();
-                } else if (curStep == 9) {
-                    getVisaStamping();
-                } else if (curStep == 10) {
-                    getContractSubmmision();
+                console.log("Loading data for step:", curStep); // Debug log
+                
+                var id = $('#GRID').val();
+                if (!id) {
+                    console.error("No residence ID found in GRID field");
+                    notify('Error!', 'Could not load residence data. Please try going back to the report page and clicking "Continue" again.', 'error');
+                    return;
+                }
+                
+                console.log("Loading step data with residence ID:", id); // Debug log
+                
+                // Ensure the ID is not empty and is numeric
+                if (isNaN(parseInt(id))) {
+                    console.error("Invalid residence ID:", id);
+                    notify('Error!', 'Invalid residence ID. Please try going back to the report page.', 'error');
+                    return;
+                }
+                
+                try {
+                    if (curStep == 2) {
+                        getOfferLetter();
+                    } else if (curStep == 3) {
+                        getInsurance();
+                    } else if (curStep == 4) {
+                        getLabourCard();
+                    } else if (curStep == 5) {
+                        getEVisaTyping();
+                    } else if (curStep == 6) {
+                        getChangeStatus();
+                    } else if (curStep == 7) {
+                        getMedicalTyping();
+                    } else if (curStep == 8) {
+                        getEmiratesIDTyping();
+                    } else if (curStep == 9) {
+                        getVisaStamping();
+                    } else if (curStep == 10) {
+                        getContractSubmmision();
+                    } else {
+                        console.log("No specific step handler for step:", curStep);
+                    }
+                } catch (error) {
+                    console.error("Error loading step data:", error);
+                    notify('Error!', 'Failed to load data for step ' + curStep + '. Please try refreshing the page.', 'error');
                 }
             }
 
@@ -2188,9 +2371,13 @@ if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID']))
                 var GRID = $('#GRID').val();
                 $('#laborCardFile').val('');
                 if (GRID == "") {
-                    notify('Validation Error!', 'Something went wrong!', 'error');
+                    notify('Validation Error!', 'Residence ID missing. Please go back to the report page and try again.', 'error');
+                    console.error("Missing residence ID when trying to load labor card data");
                     return;
                 }
+                
+                console.log("Getting labor card data for residence ID:", GRID); // Debug log
+                
                 var getLabourCrdIDAndFee = "getLabourCrdIDAndFee";
                 $.ajax({
                     type: "POST",
@@ -2200,14 +2387,33 @@ if (isset($_GET['type']) && $_GET['type'] == 'renewal' && isset($_GET['oldID']))
                         ID: GRID
                     },
                     success: function(response) {
-                        var rpt = JSON.parse(response);
-                        $('#labor_card_id').val(rpt[0].laborCardID);
-                        $('#labour_card_fee').val(rpt[0].laborCardFee);
-                        $('#mb_number').val(rpt[0].mb_number);
-                        if (rpt[0].ResidenceDocID != 0) {
-                            $('#laborCardFilesIcon').removeClass('d-none');
+                        console.log("Labor card data received"); // Debug log
+                        try {
+                            var rpt = JSON.parse(response);
+                            if (rpt && rpt.length > 0) {
+                                console.log("Successfully parsed labor card data");
+                                $('#labor_card_id').val(rpt[0].laborCardID);
+                                $('#labour_card_fee').val(rpt[0].laborCardFee);
+                                $('#mb_number').val(rpt[0].mb_number);
+                                if (rpt[0].ResidenceDocID != 0) {
+                                    $('#laborCardFilesIcon').removeClass('d-none');
+                                }
+                            } else {
+                                console.error("Empty or invalid labor card data received");
+                                notify('Warning', 'Could not load labor card data. Some fields may be empty.', 'warning');
+                            }
+                        } catch (e) {
+                            console.error("Error parsing labor card data:", e);
+                            console.error("Raw response:", response);
+                            notify('Error', 'Failed to parse labor card data. Please try refreshing the page.', 'error');
                         }
                     },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX error loading labor card data:", error);
+                        console.error("Status:", status);
+                        console.error("Response:", xhr.responseText);
+                        notify('Error!', 'Failed to load labor card data. Please try again.', 'error');
+                    }
                 });
                 getCurrencies('laborCardFeeCur', GRID);
                 getOffLChargedEnitity('load', 'LaborCard');

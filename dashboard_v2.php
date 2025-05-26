@@ -17,6 +17,116 @@ include 'nav.php';
 <div class="container-fluid mt-4">
     <h1 class="page-header mb-4">Dashboard v2 – Sales Overview</h1>
 
+    <!-- Real-time comparison section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="card-title mb-0">Real-time Comparison: Today vs Past 7 Days Average</h4>
+                        <button id="refreshRealTime" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    
+                    <div class="row mb-4" id="realtimeCards">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Tickets</h5>
+                                    <div class="d-flex justify-content-around">
+                                        <div>
+                                            <h6>Today</h6>
+                                            <h2 id="ticketToday">0</h2>
+                                        </div>
+                                        <div>
+                                            <h6>Avg (7 days)</h6>
+                                            <h2 id="ticketAverage">0</h2>
+                                            <small class="text-muted">Past week</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span id="ticketChange" class="badge bg-info">0%</span>
+                                        <span id="ticketTimeNote" class="badge bg-secondary ms-1 d-none">vs same time</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Residence</h5>
+                                    <div class="d-flex justify-content-around">
+                                        <div>
+                                            <h6>Today</h6>
+                                            <h2 id="residenceToday">0</h2>
+                                        </div>
+                                        <div>
+                                            <h6>Avg (7 days)</h6>
+                                            <h2 id="residenceAverage">0</h2>
+                                            <small class="text-muted">Past week</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span id="residenceChange" class="badge bg-info">0%</span>
+                                        <span id="residenceTimeNote" class="badge bg-secondary ms-1 d-none">vs same time</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Visa</h5>
+                                    <div class="d-flex justify-content-around">
+                                        <div>
+                                            <h6>Today</h6>
+                                            <h2 id="visaToday">0</h2>
+                                        </div>
+                                        <div>
+                                            <h6>Avg (7 days)</h6>
+                                            <h2 id="visaAverage">0</h2>
+                                            <small class="text-muted">Past week</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span id="visaChange" class="badge bg-info">0%</span>
+                                        <span id="visaTimeNote" class="badge bg-secondary ms-1 d-none">vs same time</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-2">
+                        <div class="col-12 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Hourly Activity Comparison</h5>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="compareSwitch" checked>
+                                <label class="form-check-label" for="compareSwitch">Fair comparison (up to current time)</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <canvas id="hourlyChart" style="width:100%;height:300px;"></canvas>
+                        </div>
+                        <div class="col-md-4">
+                            <canvas id="dailyChart" style="width:100%;height:300px;"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-2">
+                        <div class="col-12 text-center small text-muted">
+                            <div id="lastUpdated"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-12">
             <div class="card border-0 shadow-sm mb-4">
@@ -89,6 +199,439 @@ include 'nav.php';
 
 <script>
 $(function () {
+    // Real-time comparison data
+    let hourlyChart;
+    let dailyChart;
+    let compareSameTime = true;
+    
+    function loadRealTimeComparison() {
+        $.post('dashboardV2Controller.php', {action: 'getRealTimeComparison'}, function(resp) {
+            if (resp.status !== 'success') {
+                console.error(resp.message || 'Failed to fetch real-time data');
+                return;
+            }
+            
+            // Update counters
+            $('#ticketToday').text(resp.today.counts.ticket);
+            $('#ticketAverage').text(resp.pastAverage.counts.ticket);
+            
+            $('#residenceToday').text(resp.today.counts.residence);
+            $('#residenceAverage').text(resp.pastAverage.counts.residence);
+            
+            $('#visaToday').text(resp.today.counts.visa);
+            $('#visaAverage').text(resp.pastAverage.counts.visa);
+            
+            // Store comparison data for toggle
+            window.comparisonData = resp;
+            
+            // Update based on current comparison mode
+            updateComparisonView();
+            
+            // Draw daily breakdown chart (past 7 days)
+            updateDailyChart(resp.pastAverage.dailyBreakdown, resp.pastAverage.days);
+            
+            // Update last refreshed time
+            $('#lastUpdated').text('Last updated: ' + new Date().toLocaleString());
+            
+            // Update navbar with the same data
+            updateNavbarFromDashboard();
+        }, 'json');
+    }
+    
+    function updateComparisonView() {
+        if (!window.comparisonData) return;
+        
+        const resp = window.comparisonData;
+        const sameTimeMode = $('#compareSwitch').is(':checked');
+        
+        // Show or hide "vs same time" badges
+        $('.badge[id$="TimeNote"]').toggleClass('d-none', !sameTimeMode);
+        
+        if (sameTimeMode) {
+            // Use "up to now" counts for fair comparison
+            updateChangeBadge('ticketChange', calculatePercentChange(
+                resp.today.counts.ticket, 
+                resp.pastAverage.upToNowCounts.ticket
+            ));
+            updateChangeBadge('residenceChange', calculatePercentChange(
+                resp.today.counts.residence, 
+                resp.pastAverage.upToNowCounts.residence
+            ));
+            updateChangeBadge('visaChange', calculatePercentChange(
+                resp.today.counts.visa, 
+                resp.pastAverage.upToNowCounts.visa
+            ));
+        } else {
+            // Use full day average
+            updateChangeBadge('ticketChange', resp.percentChanges.ticket);
+            updateChangeBadge('residenceChange', resp.percentChanges.residence);
+            updateChangeBadge('visaChange', resp.percentChanges.visa);
+        }
+        
+        // Update hourly chart
+        updateHourlyChart(resp.hourlyBreakdown, resp.hourlyBreakdownPast, resp.currentHour, sameTimeMode);
+    }
+    
+    function calculatePercentChange(current, previous) {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return Math.round(((current - previous) / previous) * 100 * 10) / 10; // Round to 1 decimal
+    }
+    
+    function updateChangeBadge(id, percentChange) {
+        const badge = $('#' + id);
+        
+        // Remove previous classes
+        badge.removeClass('bg-success bg-danger bg-info');
+        
+        // Add appropriate class based on value
+        if (percentChange > 0) {
+            badge.addClass('bg-success');
+            badge.html('<i class="fas fa-arrow-up"></i> ' + percentChange + '%');
+        } else if (percentChange < 0) {
+            badge.addClass('bg-danger');
+            badge.html('<i class="fas fa-arrow-down"></i> ' + Math.abs(percentChange) + '%');
+        } else {
+            badge.addClass('bg-info');
+            badge.html('0%');
+        }
+    }
+    
+    function updateHourlyChart(todayData, avgPastData, currentHour, sameTimeMode) {
+        const ctx = document.getElementById('hourlyChart').getContext('2d');
+        
+        // Extract hours as labels
+        const hours = Object.keys(todayData.ticket);
+        
+        // Prepare datasets
+        const ticketDataToday = hours.map(h => todayData.ticket[h]);
+        const residenceDataToday = hours.map(h => todayData.residence[h]);
+        const visaDataToday = hours.map(h => todayData.visa[h]);
+        
+        const ticketDataAvg = hours.map(h => avgPastData.ticket[h]);
+        const residenceDataAvg = hours.map(h => avgPastData.residence[h]);
+        const visaDataAvg = hours.map(h => avgPastData.visa[h]);
+        
+        // For fair comparison, limit to current hour
+        let visibleHours, effectiveLabels;
+        
+        if (sameTimeMode && currentHour < 23) {
+            // Only show up to current hour (+1 for readability)
+            const endHour = Math.min(currentHour + 1, 23);
+            visibleHours = hours.slice(0, endHour + 1);
+            effectiveLabels = visibleHours;
+        } else {
+            visibleHours = hours;
+            effectiveLabels = hours;
+        }
+        
+        if (hourlyChart) hourlyChart.destroy();
+        
+        hourlyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: effectiveLabels,
+                datasets: [
+                    {
+                        label: 'Today - Ticket',
+                        data: ticketDataToday,
+                        borderColor: '#000000',
+                        backgroundColor: 'rgba(0,0,0,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    },
+                    {
+                        label: 'Avg - Ticket',
+                        data: ticketDataAvg,
+                        borderColor: '#000000',
+                        backgroundColor: 'rgba(0,0,0,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        borderDash: [5, 5]
+                    },
+                    {
+                        label: 'Today - Residence',
+                        data: residenceDataToday,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220,53,69,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    },
+                    {
+                        label: 'Avg - Residence',
+                        data: residenceDataAvg,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220,53,69,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        borderDash: [5, 5]
+                    },
+                    {
+                        label: 'Today - Visa',
+                        data: visaDataToday,
+                        borderColor: '#fd7e14',
+                        backgroundColor: 'rgba(253,126,20,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false
+                    },
+                    {
+                        label: 'Avg - Visa',
+                        data: visaDataAvg,
+                        borderColor: '#fd7e14',
+                        backgroundColor: 'rgba(253,126,20,0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: false,
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        min: 0,
+                        max: sameTimeMode && currentHour < 23 ? Math.min(currentHour + 1, 23) : 23
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: sameTimeMode ? 
+                            'Hourly Activity (Today vs 7-Day Average up to current time)' :
+                            'Hourly Activity (Today vs Full Day 7-Day Average)'
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return 'Hour: ' + tooltipItems[0].label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateDailyChart(dailyData, daysLabels) {
+        const ctx = document.getElementById('dailyChart').getContext('2d');
+        
+        if (dailyChart) dailyChart.destroy();
+        
+        // Create datasets for each type
+        const datasets = [
+            {
+                label: 'Ticket',
+                data: daysLabels.map(day => dailyData.ticket[day] || 0),
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                borderColor: '#000000',
+                borderWidth: 1
+            },
+            {
+                label: 'Residence',
+                data: daysLabels.map(day => dailyData.residence[day] || 0),
+                backgroundColor: 'rgba(220,53,69,0.6)',
+                borderColor: '#dc3545',
+                borderWidth: 1
+            },
+            {
+                label: 'Visa',
+                data: daysLabels.map(day => dailyData.visa[day] || 0),
+                backgroundColor: 'rgba(253,126,20,0.6)',
+                borderColor: '#fd7e14',
+                borderWidth: 1
+            }
+        ];
+        
+        dailyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: daysLabels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1.5,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Daily Breakdown (Past 7 Days)'
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initial load of real-time data
+    loadRealTimeComparison();
+    
+    // Toggle between comparison modes
+    $('#compareSwitch').on('change', function() {
+        updateComparisonView();
+        // Also update navbar when comparison mode changes
+        updateNavbarFromDashboard();
+    });
+    
+    // Refresh button handler
+    $('#refreshRealTime').on('click', function() {
+        $(this).html('<i class="fas fa-spinner fa-spin"></i> Refreshing...').prop('disabled', true);
+        loadRealTimeComparison();
+        setTimeout(() => {
+            $(this).html('<i class="fas fa-sync-alt"></i> Refresh').prop('disabled', false);
+        }, 1000);
+    });
+    
+    // Auto-refresh every 5 minutes
+    setInterval(function() {
+        loadRealTimeComparison();
+        // Also update navbar on auto-refresh
+        setTimeout(updateNavbarFromDashboard, 1000);
+    }, 300000); // 5 minutes in milliseconds
+    
+    // Function to update the navbar indicators
+    function updateNavbarIndicators(ticketChange, residenceChange, visaChange) {
+        // Create or update the navbar trend indicators
+        const ticketBadge = createTrendBadge('ticket-trend-nav', ticketChange, 'Ticket');
+        const residenceBadge = createTrendBadge('residence-trend-nav', residenceChange, 'Residence');
+        const visaBadge = createTrendBadge('visa-trend-nav', visaChange, 'Visa');
+        
+        // Add to navbar container
+        let navTrendsContainer = document.getElementById('navbar-trends');
+        if (!navTrendsContainer) {
+            // Find the navbar section
+            const navbarNav = document.querySelector('.navbar-nav');
+            if (navbarNav) {
+                // Create container after the digital clock
+                navTrendsContainer = document.createElement('div');
+                navTrendsContainer.id = 'navbar-trends';
+                navTrendsContainer.className = 'navbar-item d-none d-lg-block';
+                navTrendsContainer.style.cssText = 'background: rgba(0,0,0,0.15); border-radius: 8px; padding: 5px 10px; margin-left: 10px;';
+                
+                // Add title
+                const title = document.createElement('div');
+                title.className = 'text-white small mb-1';
+                title.innerHTML = 'Today vs 7-Day Avg:';
+                navTrendsContainer.appendChild(title);
+                
+                // Create badge container
+                const badgeContainer = document.createElement('div');
+                badgeContainer.className = 'd-flex gap-2';
+                badgeContainer.id = 'navbar-trend-badges';
+                navTrendsContainer.appendChild(badgeContainer);
+                
+                // Insert after digital clock
+                const clockItem = document.querySelector('.navbar-nav .navbar-item:first-child');
+                if (clockItem && clockItem.nextSibling) {
+                    navbarNav.insertBefore(navTrendsContainer, clockItem.nextSibling);
+                } else {
+                    navbarNav.appendChild(navTrendsContainer);
+                }
+            }
+        }
+        
+        // Update badge container
+        const badgeContainer = document.getElementById('navbar-trend-badges');
+        if (badgeContainer) {
+            badgeContainer.innerHTML = '';
+            badgeContainer.appendChild(ticketBadge);
+            badgeContainer.appendChild(residenceBadge);
+            badgeContainer.appendChild(visaBadge);
+        }
+    }
+    
+    function createTrendBadge(id, percentChange, label) {
+        const container = document.createElement('div');
+        container.className = 'd-flex flex-column align-items-center';
+        
+        const badge = document.createElement('span');
+        badge.id = id;
+        
+        // Set badge color and icon based on value
+        if (percentChange > 0) {
+            badge.className = 'badge bg-success text-white';
+            badge.innerHTML = `<i class="fas fa-arrow-up"></i> ${percentChange}%`;
+        } else if (percentChange < 0) {
+            badge.className = 'badge bg-danger text-white';
+            badge.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(percentChange)}%`;
+        } else {
+            badge.className = 'badge bg-secondary text-white';
+            badge.innerHTML = '0%';
+        }
+        
+        const labelEl = document.createElement('span');
+        labelEl.className = 'text-white-50 small';
+        labelEl.textContent = label;
+        
+        container.appendChild(badge);
+        container.appendChild(labelEl);
+        return container;
+    }
+    
+    // Update navbar indicators whenever we update the main comparison view
+    const originalUpdateComparisonView = updateComparisonView;
+    updateComparisonView = function() {
+        originalUpdateComparisonView();
+        
+        if (window.comparisonData) {
+            const resp = window.comparisonData;
+            const sameTimeMode = $('#compareSwitch').is(':checked');
+            
+            // Update navbar with the same percentages shown in the main view
+            if (sameTimeMode) {
+                updateNavbarIndicators(
+                    calculatePercentChange(resp.today.counts.ticket, resp.pastAverage.upToNowCounts.ticket),
+                    calculatePercentChange(resp.today.counts.residence, resp.pastAverage.upToNowCounts.residence),
+                    calculatePercentChange(resp.today.counts.visa, resp.pastAverage.upToNowCounts.visa)
+                );
+            } else {
+                updateNavbarIndicators(
+                    resp.percentChanges.ticket,
+                    resp.percentChanges.residence,
+                    resp.percentChanges.visa
+                );
+            }
+        }
+    };
+
     const ctx = document.getElementById('salesChart').getContext('2d');
 
     $.post('dashboardV2Controller.php', {action: 'getSalesData'}, function (resp) {
@@ -399,6 +942,65 @@ $(function () {
         $('#yearSelect').on('change', refreshWeekly);
         $('#weekMonthSelect').on('change', refreshWeekly);
     }, 'json');
+
+    // Update based on current comparison mode
+    function updateNavbarFromDashboard() {
+        if (!window.comparisonData) return;
+        
+        // IMPORTANT: The most reliable approach is to directly copy the HTML from dashboard badges
+        // to navbar badges to ensure they show exactly the same content
+        const ticketBadge = document.getElementById('ticketChange');
+        const residenceBadge = document.getElementById('residenceChange');
+        const visaBadge = document.getElementById('visaChange');
+        
+        if (!ticketBadge || !residenceBadge || !visaBadge) {
+            console.error('Dashboard badges not found');
+            return;
+        }
+        
+        // Copy the exact HTML from dashboard badges to navbar badges
+        const ticketNavBadge = document.getElementById('ticket-trend-nav');
+        const residenceNavBadge = document.getElementById('residence-trend-nav');
+        const visaNavBadge = document.getElementById('visa-trend-nav');
+        
+        if (ticketNavBadge && ticketBadge) {
+            // Copy classes
+            ticketNavBadge.className = ticketBadge.className.replace('bg-info', 'bg-secondary');
+            // Copy HTML content (this ensures exact same format and values)
+            ticketNavBadge.innerHTML = ticketBadge.innerHTML;
+            
+            // Fix icon classes if needed
+            if (ticketNavBadge.innerHTML.includes('fas fa-')) {
+                ticketNavBadge.innerHTML = ticketNavBadge.innerHTML.replace('fas fa-', 'fa fa-');
+            }
+        }
+        
+        if (residenceNavBadge && residenceBadge) {
+            // Copy classes
+            residenceNavBadge.className = residenceBadge.className.replace('bg-info', 'bg-secondary');
+            // Copy HTML content
+            residenceNavBadge.innerHTML = residenceBadge.innerHTML;
+            
+            // Fix icon classes if needed
+            if (residenceNavBadge.innerHTML.includes('fas fa-')) {
+                residenceNavBadge.innerHTML = residenceNavBadge.innerHTML.replace('fas fa-', 'fa fa-');
+            }
+        }
+        
+        if (visaNavBadge && visaBadge) {
+            // Copy classes
+            visaNavBadge.className = visaBadge.className.replace('bg-info', 'bg-secondary');
+            // Copy HTML content
+            visaNavBadge.innerHTML = visaBadge.innerHTML;
+            
+            // Fix icon classes if needed
+            if (visaNavBadge.innerHTML.includes('fas fa-')) {
+                visaNavBadge.innerHTML = visaNavBadge.innerHTML.replace('fas fa-', 'fa fa-');
+            }
+        }
+        
+        console.log('Directly copied badge HTML from dashboard to navbar');
+    }
 });
 </script>
 

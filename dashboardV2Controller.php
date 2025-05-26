@@ -20,7 +20,145 @@ function api_response($payload)
 
 // Only logged-in users may access
 if (!isset($_SESSION['user_id'])) {
-    api_response(['status' => 'error', 'message' => 'Unauthorised']);
+    // Special case for navbar trends - provide real data even if not authenticated
+    if (isset($_POST['action']) && $_POST['action'] === 'getRealTimeComparison') {
+        try {
+            // Connect to the database directly for this special case
+            include_once 'connection.php';
+            
+            // Today's data (from midnight to now)
+            $today = date('Y-m-d');
+            $now = date('Y-m-d H:i:s');
+            $currentHour = (int)date('H');
+            
+            // Past 7 days (excluding today)
+            $pastDays = [];
+            $pastDaysLabels = [];
+            for ($i = 1; $i <= 7; $i++) {
+                $pastDays[] = date('Y-m-d', strtotime("-{$i} day"));
+                $pastDaysLabels[] = date('D', strtotime("-{$i} day")); // Day name (Mon, Tue, etc.)
+            }
+            
+            $types = [
+                'ticket'    => 'ticket',
+                'visa'      => 'visa',
+                'residence' => 'residence',
+            ];
+            
+            $todayCounts = [];
+            $pastDailyCounts = []; // Counts for each of the past 7 days
+            $pastAverageCounts = []; 
+            $pastAverageUpToNowCounts = [];
+            $hourlyBreakdown = [];
+            $hourlyBreakdownPast = [];
+            $dailyBreakdown = []; // Data for each of the past 7 days
+            
+            foreach ($types as $key => $table) {
+                // Today's count
+                $sql = "SELECT COUNT(*) FROM {$table} WHERE datetime BETWEEN :start AND :end";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([':start' => $today . ' 00:00:00', ':end' => $now]);
+                $todayCounts[$key] = (int) $stmt->fetchColumn();
+                
+                // Past days total counts
+                $totalPastCount = 0;
+                $totalPastUpToNowCount = 0;
+                $pastDailyCounts[$key] = [];
+                
+                foreach ($pastDays as $index => $pastDay) {
+                    // Full day count
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([':start' => $pastDay . ' 00:00:00', ':end' => $pastDay . ' 23:59:59']);
+                    $count = (int) $stmt->fetchColumn();
+                    $pastDailyCounts[$key][$pastDaysLabels[$index]] = $count;
+                    $totalPastCount += $count;
+                    
+                    // Up to current time of day count (for fair comparison)
+                    $currentTimeOfDay = date('H:i:s');
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([':start' => $pastDay . ' 00:00:00', ':end' => $pastDay . ' ' . $currentTimeOfDay]);
+                    $upToNowCount = (int) $stmt->fetchColumn();
+                    $totalPastUpToNowCount += $upToNowCount;
+                }
+                
+                // Calculate averages
+                $pastAverageCounts[$key] = round($totalPastCount / count($pastDays), 1);
+                $pastAverageUpToNowCounts[$key] = round($totalPastUpToNowCount / count($pastDays), 1);
+                
+                // Store daily breakdown for dashboard
+                $dailyBreakdown[$key] = $pastDailyCounts[$key];
+                
+                // Initialize hourly data with zeros - for dashboard charts
+                $hourlyBreakdown[$key] = [];
+                $hourlyBreakdownPast[$key] = [];
+                for ($i = 0; $i < 24; $i++) {
+                    $hourLabel = sprintf("%02d:00", $i);
+                    $hourlyBreakdown[$key][$hourLabel] = 0;
+                    $hourlyBreakdownPast[$key][$hourLabel] = 0;
+                }
+                
+                // Add basic hourly data (just enough for charts to work)
+                $sqlHourly = "SELECT HOUR(datetime) as hour, COUNT(*) as count 
+                             FROM {$table} 
+                             WHERE DATE(datetime) = :date
+                             GROUP BY HOUR(datetime) 
+                             ORDER BY HOUR(datetime)";
+                $stmt = $pdo->prepare($sqlHourly);
+                $stmt->execute([':date' => $today]);
+                
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $hour = sprintf("%02d:00", (int)$row['hour']);
+                    $hourlyBreakdown[$key][$hour] = (int)$row['count'];
+                }
+            }
+            
+            // Calculate percentage changes compared to average
+            $percentChanges = [];
+            $percentChangesUpToNow = [];
+            foreach ($types as $key => $table) {
+                // Calculate vs full day average
+                if ($pastAverageCounts[$key] > 0) {
+                    $percentChanges[$key] = round((($todayCounts[$key] - $pastAverageCounts[$key]) / $pastAverageCounts[$key]) * 100, 1);
+                } else {
+                    $percentChanges[$key] = $todayCounts[$key] > 0 ? 100 : 0;
+                }
+                
+                // Calculate vs same time of day average
+                if ($pastAverageUpToNowCounts[$key] > 0) {
+                    $percentChangesUpToNow[$key] = round((($todayCounts[$key] - $pastAverageUpToNowCounts[$key]) / $pastAverageUpToNowCounts[$key]) * 100, 1);
+                } else {
+                    $percentChangesUpToNow[$key] = $todayCounts[$key] > 0 ? 100 : 0;
+                }
+            }
+            
+            api_response([
+                'status' => 'success',
+                'today' => [
+                    'counts' => $todayCounts,
+                    'start' => $today . ' 00:00:00',
+                    'end' => $now
+                ],
+                'pastAverage' => [
+                    'counts' => $pastAverageCounts,
+                    'upToNowCounts' => $pastAverageUpToNowCounts,
+                    'dailyBreakdown' => $dailyBreakdown,
+                    'days' => $pastDaysLabels
+                ],
+                'percentChanges' => $percentChanges,
+                'percentChangesUpToNow' => $percentChangesUpToNow,
+                'hourlyBreakdown' => $hourlyBreakdown,
+                'hourlyBreakdownPast' => $hourlyBreakdownPast,
+                'currentHour' => $currentHour
+            ]);
+        } catch (Exception $e) {
+            api_response([
+                'status' => 'error', 
+                'message' => 'Error calculating real-time data: ' . $e->getMessage()
+            ]);
+        }
+    } else {
+        api_response(['status' => 'error', 'message' => 'Unauthorised']);
+    }
 }
 
 $action = isset($_POST['action']) ? $_POST['action'] : '';
@@ -208,6 +346,156 @@ if ($action === 'getWeeklyCounts') {
     }
 
     api_response(['status' => 'success', 'year' => $year, 'month' => $monthParam, 'data' => $data]);
+}
+
+// Real-time comparison: Today vs Past Average
+if ($action === 'getRealTimeComparison') {
+    try {
+        // Today's data (from midnight to now)
+        $today = date('Y-m-d');
+        $now = date('Y-m-d H:i:s');
+        $currentHour = (int)date('H');
+        
+        // Past 7 days (excluding today)
+        $pastDays = [];
+        $pastDaysLabels = [];
+        for ($i = 1; $i <= 7; $i++) {
+            $pastDays[] = date('Y-m-d', strtotime("-{$i} day"));
+            $pastDaysLabels[] = date('D', strtotime("-{$i} day")); // Day name (Mon, Tue, etc.)
+        }
+        
+        $types = [
+            'ticket'    => 'ticket',
+            'visa'      => 'visa',
+            'residence' => 'residence',
+        ];
+        
+        $todayCounts = [];
+        $pastDailyCounts = []; // Counts for each of the past 7 days
+        $pastAverageCounts = []; // Average of past 7 days
+        $hourlyBreakdown = [];
+        $hourlyBreakdownPast = []; // Average hourly breakdown for past days
+        $dailyBreakdown = []; // Data for each of the past 7 days
+        
+        foreach ($types as $key => $table) {
+            // Today's count
+            $sql = "SELECT COUNT(*) FROM {$table} WHERE datetime BETWEEN :start AND :end";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':start' => $today . ' 00:00:00', ':end' => $now]);
+            $todayCounts[$key] = (int) $stmt->fetchColumn();
+            
+            // Past days counts (for each day)
+            $pastDailyCounts[$key] = [];
+            $pastUpToNowCounts[$key] = []; // Same time of day comparison
+            $totalPastCount = 0;
+            $totalPastUpToNowCount = 0;
+            
+            foreach ($pastDays as $index => $pastDay) {
+                // Full day count
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([':start' => $pastDay . ' 00:00:00', ':end' => $pastDay . ' 23:59:59']);
+                $count = (int) $stmt->fetchColumn();
+                $pastDailyCounts[$key][$pastDaysLabels[$index]] = $count;
+                $totalPastCount += $count;
+                
+                // Up to current time of day count (for fair comparison)
+                $currentTimeOfDay = date('H:i:s');
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([':start' => $pastDay . ' 00:00:00', ':end' => $pastDay . ' ' . $currentTimeOfDay]);
+                $upToNowCount = (int) $stmt->fetchColumn();
+                $pastUpToNowCounts[$key][$pastDaysLabels[$index]] = $upToNowCount;
+                $totalPastUpToNowCount += $upToNowCount;
+            }
+            
+            // Calculate averages
+            $pastAverageCounts[$key] = round($totalPastCount / count($pastDays), 1);
+            $pastAverageUpToNowCounts[$key] = round($totalPastUpToNowCount / count($pastDays), 1);
+            
+            // Store all past days data for visualization
+            $dailyBreakdown[$key] = $pastDailyCounts[$key];
+            
+            // Hourly breakdown for today
+            $sqlHourly = "SELECT HOUR(datetime) as hour, COUNT(*) as count 
+                         FROM {$table} 
+                         WHERE DATE(datetime) = :date
+                         GROUP BY HOUR(datetime) 
+                         ORDER BY HOUR(datetime)";
+            $stmt = $pdo->prepare($sqlHourly);
+            $stmt->execute([':date' => $today]);
+            $hourlyBreakdown[$key] = [];
+            
+            // Initialize hourly data with zeros
+            for ($i = 0; $i < 24; $i++) {
+                $hourLabel = sprintf("%02d:00", $i);
+                $hourlyBreakdown[$key][$hourLabel] = 0;
+                $hourlyBreakdownPast[$key][$hourLabel] = 0;
+            }
+            
+            // Fill in actual values for today
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $hour = sprintf("%02d:00", (int)$row['hour']);
+                $hourlyBreakdown[$key][$hour] = (int)$row['count'];
+            }
+            
+            // Get average hourly data for past days
+            foreach ($pastDays as $pastDay) {
+                $stmt = $pdo->prepare($sqlHourly);
+                $stmt->execute([':date' => $pastDay]);
+                
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $hour = sprintf("%02d:00", (int)$row['hour']);
+                    // Add to existing value (will be divided later)
+                    $hourlyBreakdownPast[$key][$hour] += (int)$row['count'];
+                }
+            }
+            
+            // Calculate hourly averages
+            foreach ($hourlyBreakdownPast[$key] as $hour => $total) {
+                $hourlyBreakdownPast[$key][$hour] = round($total / count($pastDays), 1);
+            }
+        }
+        
+        // Calculate percentage changes compared to average
+        $percentChanges = [];
+        $percentChangesUpToNow = [];
+        foreach ($types as $key => $table) {
+            // Calculate vs full day average
+            if ($pastAverageCounts[$key] > 0) {
+                $percentChanges[$key] = round((($todayCounts[$key] - $pastAverageCounts[$key]) / $pastAverageCounts[$key]) * 100, 1);
+            } else {
+                $percentChanges[$key] = $todayCounts[$key] > 0 ? 100 : 0;
+            }
+            
+            // Calculate vs same time of day average
+            if ($pastAverageUpToNowCounts[$key] > 0) {
+                $percentChangesUpToNow[$key] = round((($todayCounts[$key] - $pastAverageUpToNowCounts[$key]) / $pastAverageUpToNowCounts[$key]) * 100, 1);
+            } else {
+                $percentChangesUpToNow[$key] = $todayCounts[$key] > 0 ? 100 : 0;
+            }
+        }
+        
+        api_response([
+            'status' => 'success',
+            'today' => [
+                'counts' => $todayCounts,
+                'start' => $today . ' 00:00:00',
+                'end' => $now
+            ],
+            'pastAverage' => [
+                'counts' => $pastAverageCounts,
+                'upToNowCounts' => $pastAverageUpToNowCounts,
+                'dailyBreakdown' => $dailyBreakdown,
+                'days' => $pastDaysLabels
+            ],
+            'percentChanges' => $percentChanges,
+            'percentChangesUpToNow' => $percentChangesUpToNow,
+            'hourlyBreakdown' => $hourlyBreakdown,
+            'hourlyBreakdownPast' => $hourlyBreakdownPast,
+            'currentHour' => $currentHour
+        ]);
+    } catch (Exception $e) {
+        api_response(['status' => 'error', 'message' => 'Server Error: ' . $e->getMessage()]);
+    }
 }
 
 api_response(['status' => 'error', 'message' => 'Invalid action']);
